@@ -85,9 +85,18 @@ enum WindowActions {
     /// screen". Setting the frame gives the Windows behaviour every time.
     @MainActor
     static func maximize(_ record: WindowRecord) {
-        guard let uuid = record.screenUUID,
-              let geometry = TaskbarPresenter.shared.geometry(forScreen: uuid) else { return }
-        setFrame(geometry.usable, on: record)
+        guard let uuid = record.screenUUID else { return }
+
+        // `geometry` is nil while the bar auto-hides or that display is showing
+        // something full screen — the bar is holding no space then, so the
+        // window is entitled to everything below the menu bar.
+        let target = TaskbarPresenter.shared.geometry(forScreen: uuid)?.usable
+            ?? NSScreen.screens
+                .first { ScreenIdentity(screen: $0)?.uuid == uuid }?
+                .visibleFrame
+
+        guard let target else { return }
+        setFrame(target, on: record)
     }
 
     @MainActor
@@ -113,12 +122,21 @@ enum WindowActions {
         queue.async {
             var origin = CGPoint(x: frame.minX, y: primaryMaxY - frame.maxY)
             var size = CGSize(width: frame.width, height: frame.height)
-            if let value = AXValueCreate(.cgPoint, &origin) {
-                AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, value)
+
+            func apply(_ attribute: String, _ value: AXValue?) {
+                guard let value else { return }
+                AXUIElementSetAttributeValue(element, attribute as CFString, value)
             }
-            if let value = AXValueCreate(.cgSize, &size) {
-                AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, value)
-            }
+
+            // Size, position, size again — and the repetition is the point.
+            // A resize is clamped against where the window currently is, so a
+            // window sitting near the bottom right can only grow as far as that
+            // corner allows, and a single pass leaves it short of filling the
+            // screen. Moving it first and then resizing has the mirror problem.
+            apply(kAXSizeAttribute as String, AXValueCreate(.cgSize, &size))
+            apply(kAXPositionAttribute as String, AXValueCreate(.cgPoint, &origin))
+            apply(kAXSizeAttribute as String, AXValueCreate(.cgSize, &size))
+
             Task { @MainActor in WindowRegistry.shared.setNeedsRescan(.structural) }
         }
     }

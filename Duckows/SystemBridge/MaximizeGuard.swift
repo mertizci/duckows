@@ -134,6 +134,11 @@ final class MaximizeGuard {
         var origin = CGPoint(x: frame.minX, y: primaryMaxY - frame.maxY)
         var size = CGSize(width: frame.width, height: frame.height)
 
+        // Size, position, size: a resize is clamped against where the window
+        // currently sits, so one pass leaves it short.
+        if let value = AXValueCreate(.cgSize, &size) {
+            AXUIElementSetAttributeValue(record.element, kAXSizeAttribute as CFString, value)
+        }
         if let value = AXValueCreate(.cgPoint, &origin) {
             AXUIElementSetAttributeValue(record.element, kAXPositionAttribute as CFString, value)
         }
