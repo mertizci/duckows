@@ -62,17 +62,25 @@ final class WindowScanner {
         "AXFullScreen"
     ]
 
-    func scan(context: ScanContext, completion: @escaping @MainActor ([WindowRecord]) -> Void) {
+    struct ScanResult {
+        let records: [WindowRecord]
+        /// Apps the window server still shows owning a real window, even
+        /// one that is off screen. This is the ground truth AX loses sight
+        /// of when a window is minimized.
+        let pidsOwningWindows: Set<pid_t>
+    }
+
+    func scan(context: ScanContext, completion: @escaping @MainActor (ScanResult) -> Void) {
         queue.async { [weak self] in
             guard let self else { return }
-            let records = self.performScan(context: context)
-            Task { @MainActor in completion(records) }
+            let result = self.performScan(context: context)
+            Task { @MainActor in completion(result) }
         }
     }
 
     // MARK: - Scanning
 
-    private func performScan(context: ScanContext) -> [WindowRecord] {
+    private func performScan(context: ScanContext) -> ScanResult {
         let onScreen = Self.onScreenWindowIDs()
         var seen: Set<CGWindowID> = []
         let ownPID = ProcessInfo.processInfo.processIdentifier
@@ -115,7 +123,29 @@ final class WindowScanner {
         // this session rather than growing forever.
         everVisible.formIntersection(seen)
 
-        return records
+        return ScanResult(records: records, pidsOwningWindows: Self.pidsOwningRealWindows())
+    }
+
+    /// Apps that own a window the window server considers real, on screen
+    /// or not.
+    ///
+    /// Every app also owns full-width strips 30 or so points tall — its
+    /// menu bar, one per display — so a size floor is what separates a
+    /// document window from the furniture.
+    private static func pidsOwningRealWindows() -> Set<pid_t> {
+        let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
+        guard let infos = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return []
+        }
+        var pids: Set<pid_t> = []
+        for info in infos {
+            guard (info[kCGWindowLayer as String] as? Int) == 0,
+                  let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+                  let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
+                  (bounds["Width"] ?? 0) >= 200, (bounds["Height"] ?? 0) >= 150 else { continue }
+            pids.insert(pid)
+        }
+        return pids
     }
 
     private func makeRecord(

@@ -98,8 +98,9 @@ final class WindowRegistry: ObservableObject {
 
         let started = Date()
         let context = ScanContext.current()
-        scanner.scan(context: context) { [weak self] records in
+        scanner.scan(context: context) { [weak self] result in
             guard let self else { return }
+            let records = result.records
             let elapsed = Date().timeIntervalSince(started)
             self.lastScanDuration = elapsed
             // A sweep is synchronous IPC into every running app, so it is the
@@ -108,7 +109,7 @@ final class WindowRegistry: ObservableObject {
                 NSLog("Duckows: slow window sweep – %.0f ms for %d windows",
                       elapsed * 1000, records.count)
             }
-            self.apply(records)
+            self.apply(records, pidsOwningWindows: result.pidsOwningWindows)
             self.isScanning = false
             if self.needsAnotherPass {
                 self.needsAnotherPass = false
@@ -117,7 +118,30 @@ final class WindowRegistry: ObservableObject {
         }
     }
 
-    private func apply(_ fresh: [WindowRecord]) {
+    private func apply(_ fresh: [WindowRecord], pidsOwningWindows: Set<pid_t>) {
+        // AX loses sight of some apps' windows the moment they are minimized —
+        // WhatsApp and Notes both do this — and the app would then fall into
+        // the group with nothing open, taking a new slot at the far right and
+        // looking as though it had been closed.
+        //
+        // The window server knows better: it still lists the window, just not
+        // on screen. So when an app reports no windows while the window server
+        // says it owns one, last sweep's records are carried forward, marked
+        // out of sight. Closing the window for real removes it there too, and
+        // only then does the app drop to the idle group.
+        var fresh = fresh
+        let pidsWithFreshRecords = Set(fresh.map(\.pid))
+        for (pid, previous) in Dictionary(grouping: records, by: \.pid)
+        where !pidsWithFreshRecords.contains(pid)
+            && pidsOwningWindows.contains(pid)
+            && NSRunningApplication(processIdentifier: pid)?.isTerminated == false {
+            fresh.append(contentsOf: previous.map { record in
+                var carried = record
+                carried.isVisible = false
+                return carried
+            })
+        }
+
         // A minimized window reports a stale position, so it would otherwise
         // appear to jump to whichever display the origin happens to land on.
         var merged = fresh
