@@ -42,7 +42,8 @@ struct WindowRecord: Identifiable, Equatable {
 /// the same type so the view never has to branch on the grouping mode.
 struct TaskbarItem: Identifiable, Equatable {
     let id: String
-    let title: String
+    /// The window's own title, or the label the user gave this button.
+    var title: String
     let pid: pid_t
     let bundleIdentifier: String?
     let windowIDs: [CGWindowID]

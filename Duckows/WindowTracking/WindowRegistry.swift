@@ -188,7 +188,16 @@ final class WindowRegistry: ObservableObject {
             .sorted { slot(for: $0.id) < slot(for: $1.id) }
 
         // Publishing an equal array would rebuild every button for nothing.
-        let combined = windows + idle
+        var combined = windows + idle
+
+        // A button the user has renamed wears that name instead.
+        for index in combined.indices {
+            if let custom = CustomNames.shared.name(for: combined[index].id) {
+                combined[index].title = custom
+            }
+        }
+        CustomNames.shared.prune(keeping: Set(combined.map(\.id)))
+
         guard combined != items else { return }
         items = combined
     }
