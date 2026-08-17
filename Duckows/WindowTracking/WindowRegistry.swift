@@ -27,6 +27,17 @@ final class WindowRegistry: ObservableObject {
     private var isScanning = false
     private var needsAnotherPass = false
 
+    /// Where each button sits, assigned the first time it is seen and never
+    /// revised.
+    ///
+    /// Records come back in `NSWorkspace.runningApplications` order, which is
+    /// not stable — it shifts as apps are activated. Rendering in that order
+    /// made buttons wander: minimizing a window moved it to the end of the bar
+    /// rather than leaving it where it was. A Windows taskbar keeps a button in
+    /// the slot it was born in, and so does this.
+    private var slots: [String: Int] = [:]
+    private var nextSlot = 0
+
     /// Structural changes should feel immediate; title changes must not, or a
     /// terminal would rebuild the bar on every keystroke.
     private static let structuralDebounce = Duration.milliseconds(60)
@@ -169,10 +180,28 @@ final class WindowRegistry: ObservableObject {
             }
         }
 
+        // Windows first, in the order they appeared; apps with nothing open
+        // collect at the far end, out of the way.
+        let windows = next.sorted { slot(for: $0.id) < slot(for: $1.id) }
+        let idle = runningAppsWithoutWindows(excluding: Set(records.map(\.pid)))
+            .sorted { slot(for: $0.id) < slot(for: $1.id) }
+
         // Publishing an equal array would rebuild every button for nothing.
-        let combined = next + runningAppsWithoutWindows(excluding: Set(records.map(\.pid)))
+        let combined = windows + idle
         guard combined != items else { return }
         items = combined
+    }
+
+    /// The slot a button occupies, claimed on first sight.
+    ///
+    /// Entries are deliberately never removed: a window that briefly vanishes
+    /// from a sweep — which is exactly what a flaky attribute read causes —
+    /// comes back to the place it left rather than jumping to the end.
+    private func slot(for id: String) -> Int {
+        if let existing = slots[id] { return existing }
+        slots[id] = nextSlot
+        nextSlot += 1
+        return slots[id]!
     }
 
     /// Apps that are running but own no windows.
