@@ -262,12 +262,14 @@ struct AppSettings: Codable, Equatable {
     var general: GeneralSettings
     var appearance: AppearanceSettings
     var taskbar: TaskbarSettings
+    var tray: TraySettings
     var dockRestore: DockRestoreState?
 
     static let `default` = AppSettings(
         general: .default,
         appearance: .default,
         taskbar: .default,
+        tray: .default,
         dockRestore: nil
     )
 
@@ -277,14 +279,16 @@ struct AppSettings: Codable, Equatable {
         general = try c.decodeIfPresent(GeneralSettings.self, forKey: .general) ?? d.general
         appearance = try c.decodeIfPresent(AppearanceSettings.self, forKey: .appearance) ?? d.appearance
         taskbar = try c.decodeIfPresent(TaskbarSettings.self, forKey: .taskbar) ?? d.taskbar
+        tray = try c.decodeIfPresent(TraySettings.self, forKey: .tray) ?? d.tray
         dockRestore = try c.decodeIfPresent(DockRestoreState.self, forKey: .dockRestore)
     }
 
     init(general: GeneralSettings, appearance: AppearanceSettings,
-         taskbar: TaskbarSettings, dockRestore: DockRestoreState?) {
+         taskbar: TaskbarSettings, tray: TraySettings, dockRestore: DockRestoreState?) {
         self.general = general
         self.appearance = appearance
         self.taskbar = taskbar
+        self.tray = tray
         self.dockRestore = dockRestore
     }
 }

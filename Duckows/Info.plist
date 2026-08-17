@@ -61,5 +61,13 @@
 	     withholds the network name from apps without location access. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Duckows shows the name of your current Wi-Fi network. macOS requires location access to read it.</string>
+
+	<!-- Mandatory, not optional: on macOS 26 IOBluetooth is implemented on top
+	     of CoreBluetooth, so even the private power-state call goes through the
+	     Bluetooth TCC gate. Without this key the process is killed outright
+	     (__TCC_CRASHING_DUE_TO_PRIVACY_VIOLATION__) rather than denied. The
+	     widget is off by default so the prompt only appears if it is enabled. -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Duckows shows whether Bluetooth is on and lets you switch it from the taskbar.</string>
 </dict>
 </plist>

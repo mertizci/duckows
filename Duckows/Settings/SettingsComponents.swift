@@ -5,6 +5,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case general
     case appearance
     case taskbar
+    case tray
     case about
 
     var id: String { rawValue }
@@ -14,6 +15,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: return "General"
         case .appearance: return "Appearance"
         case .taskbar: return "Taskbar"
+        case .tray: return "Tray"
         case .about: return "About"
         }
     }
@@ -23,6 +25,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: return "Startup and updates"
         case .appearance: return "Color, material, and size"
         case .taskbar: return "Position, buttons, and displays"
+        case .tray: return "Clock, battery, and status icons"
         case .about: return "Version and support"
         }
     }
@@ -32,6 +35,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: return "gearshape"
         case .appearance: return "paintpalette"
         case .taskbar: return "rectangle.bottomthird.inset.filled"
+        case .tray: return "menubar.rectangle"
         case .about: return "info.circle"
         }
     }

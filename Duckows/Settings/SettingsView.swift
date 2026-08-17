@@ -45,6 +45,7 @@ struct SettingsView: View {
             case .general: GeneralSettingsPage()
             case .appearance: AppearanceSettingsPage()
             case .taskbar: TaskbarSettingsPage()
+            case .tray: TraySettingsPage()
             case .about: AboutSettingsPage()
             }
         }

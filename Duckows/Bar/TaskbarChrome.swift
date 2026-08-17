@@ -16,6 +16,7 @@ struct TaskbarChrome: View {
     var needsAccessibility = false
     /// Stand-ins used only by the settings preview.
     var sampleItems: [SampleItem] = []
+    var tray: TraySettings = .default
     var showsClock = true
     var screenUUID: String?
 
@@ -46,7 +47,7 @@ struct TaskbarChrome: View {
             Spacer(minLength: 0)
 
             if showsClock {
-                TrayClock()
+                TrayView(tray: tray, iconSize: taskbar.iconSize)
             }
         }
         .padding(.horizontal, 8)
@@ -187,21 +188,3 @@ private struct SampleButton: View {
     }
 }
 
-private struct TrayClock: View {
-    @State private var now = Date()
-
-    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    var body: some View {
-        VStack(alignment: .trailing, spacing: 0) {
-            Text(now, format: .dateTime.hour().minute())
-                .font(.system(size: 12, weight: .medium))
-            Text(now, format: .dateTime.day().month().year())
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-        }
-        .monospacedDigit()
-        .padding(.horizontal, 8)
-        .onReceive(tick) { now = $0 }
-    }
-}
