@@ -37,6 +37,17 @@ The Dock is centred, icon-only, and tells you nothing about which window is whic
 brew install --cask mertizci/tap/duckows
 ```
 
+### First launch
+
+macOS marks anything downloaded — including notarized apps — with a quarantine
+flag, and holds the app on its first launch until you confirm. Open Duckows
+from Applications and click **Open**.
+
+This matters more for Duckows than for most apps: it has no Dock icon and no
+window of its own, so if that prompt is missed the app looks like it did
+nothing, when it is really just sitting there waiting for an answer. It happens
+exactly once.
+
 > Keep Duckows in `/Applications`. macOS App Translocation gives an app run from `~/Downloads` or a mounted disk image a randomised read-only path, which breaks both the login item and the built-in updater.
 
 ## Features

@@ -7,7 +7,11 @@ import Combine
 final class TaskbarPresenter: ObservableObject {
     static let shared = TaskbarPresenter()
 
-    private var controllers: [ObjectIdentifier: TaskbarWindowController] = [:]
+    /// Keyed by display UUID, not by the NSScreen object. AppKit hands out fresh
+    /// NSScreen instances after every display configuration change, so keying on
+    /// object identity would tear down and rebuild every bar on each resolution
+    /// change or hot-plug — visible as a flash.
+    private var controllers: [ScreenIdentity: TaskbarWindowController] = [:]
     private var cancellables: Set<AnyCancellable> = []
 
     private init() {}
@@ -34,7 +38,13 @@ final class TaskbarPresenter: ObservableObject {
 
     private func synchronize(with screens: [NSScreen]) {
         let settings = SettingsStore.shared.settings.taskbar
-        let live = Set(screens.map { ObjectIdentifier($0) })
+
+        // A display with no resolvable UUID (rare, seen with some virtual
+        // displays) gets no bar rather than an unmanageable one.
+        let identified = screens.compactMap { screen -> (ScreenIdentity, NSScreen)? in
+            ScreenIdentity(screen: screen).map { ($0, screen) }
+        }
+        let live = Set(identified.map(\.0))
 
         // Drop controllers for displays that went away.
         for (key, controller) in controllers where !live.contains(key) {
@@ -42,23 +52,21 @@ final class TaskbarPresenter: ObservableObject {
             controllers.removeValue(forKey: key)
         }
 
-        for screen in screens {
-            let key = ObjectIdentifier(screen)
-            let identity = ScreenIdentity(screen: screen)
-            let isDisabled = !settings.showsOnAllDisplays && screen != NSScreen.main
-                || identity.map { settings.disabledDisplayUUIDs.contains($0.uuid) } ?? false
+        for (identity, screen) in identified {
+            let isOnlyMainAllowed = !settings.showsOnAllDisplays && screen != NSScreen.main
+            let isExplicitlyDisabled = settings.disabledDisplayUUIDs.contains(identity.uuid)
 
-            if isDisabled {
-                controllers[key]?.hide()
-                controllers.removeValue(forKey: key)
+            if isOnlyMainAllowed || isExplicitlyDisabled {
+                controllers[identity]?.hide()
+                controllers.removeValue(forKey: identity)
                 continue
             }
 
-            if let existing = controllers[key] {
+            if let existing = controllers[identity] {
                 existing.update(screen: screen)
             } else {
                 let controller = TaskbarWindowController(screen: screen)
-                controllers[key] = controller
+                controllers[identity] = controller
                 controller.show()
             }
         }
