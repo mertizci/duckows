@@ -67,10 +67,15 @@ enum AXBridge {
         let status = AXUIElementCopyMultipleAttributeValues(
             element, attributes as CFArray, AXCopyMultipleAttributeOptions(), &raw
         )
+
         guard status == .success,
               let values = raw as? [AnyObject],
               values.count == attributes.count else {
-            return [:]
+            // The batch is an optimisation, not a contract. Returning nothing
+            // here made a window vanish from the taskbar the moment one of its
+            // attributes became unreadable — which is exactly what happens to
+            // position and size when a window is minimized.
+            return individualValues(element, attributes)
         }
 
         var result: [String: AnyObject] = [:]
@@ -79,6 +84,18 @@ enum AXBridge {
                 continue
             }
             result[attribute] = value
+        }
+        return result
+    }
+
+    /// One round trip per attribute. Slower, and only used when the batched
+    /// read fails outright.
+    private static func individualValues(_ element: AXUIElement, _ attributes: [String]) -> [String: AnyObject] {
+        var result: [String: AnyObject] = [:]
+        for attribute in attributes {
+            if let value = copyValue(element, attribute) {
+                result[attribute] = value
+            }
         }
         return result
     }

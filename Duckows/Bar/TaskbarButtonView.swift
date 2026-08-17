@@ -25,7 +25,9 @@ struct TaskbarButtonView: View {
                     .frame(width: taskbar.iconSize, height: taskbar.iconSize)
                     // A minimized window still deserves a button, just a
                     // quieter one.
-                    .opacity(item.isMinimized ? 0.45 : 1)
+                    // Dimmed for a window that is out of sight, and for an
+                    // app that is running with nothing open.
+                    .opacity(item.isMinimized || !item.hasWindows ? 0.5 : 1)
             }
 
             if taskbar.showsWindowTitles {
@@ -33,7 +35,7 @@ struct TaskbarButtonView: View {
                     .font(.system(size: 12))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .foregroundStyle(item.isMinimized ? .secondary : .primary)
+                    .foregroundStyle(item.isMinimized || !item.hasWindows ? .secondary : .primary)
             }
 
             // Grouped buttons say how many windows they stand for.
@@ -60,6 +62,12 @@ struct TaskbarButtonView: View {
                     .fill(Color.accentColor)
                     .frame(height: 2)
                     .padding(.horizontal, 8)
+            } else if !item.hasWindows {
+                // The Dock's running-app dot: alive, but nothing open.
+                Circle()
+                    .fill(Color.primary.opacity(0.45))
+                    .frame(width: 3, height: 3)
+                    .padding(.bottom, 2)
             }
         }
         .contentShape(Rectangle())

@@ -44,6 +44,9 @@ struct TaskbarItem: Identifiable, Equatable {
     let windowIDs: [CGWindowID]
     let isActive: Bool
     let isMinimized: Bool
+    /// False for an app that is running with no windows of its own — the
+    /// state macOS leaves an app in when you close its last window.
+    var hasWindows: Bool = true
     let screenUUID: String?
 
     static func windowID(_ id: CGWindowID) -> String { "w:\(id)" }

@@ -168,8 +168,40 @@ final class WindowRegistry: ObservableObject {
         }
 
         // Publishing an equal array would rebuild every button for nothing.
-        guard next != items else { return }
-        items = next
+        let combined = next + runningAppsWithoutWindows(excluding: Set(records.map(\.pid)))
+        guard combined != items else { return }
+        items = combined
+    }
+
+    /// Apps that are running but own no windows.
+    ///
+    /// Closing the last window of a Mac app does not quit it — the app stays
+    /// alive with nothing on screen, which is why the Dock keeps showing it
+    /// with a dot underneath. A purely window-driven bar loses the app at that
+    /// moment, so these keep their place, and clicking one activates the app
+    /// the way clicking its Dock tile would.
+    private func runningAppsWithoutWindows(excluding pidsWithWindows: Set<pid_t>) -> [TaskbarItem] {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        return NSWorkspace.shared.runningApplications
+            .filter {
+                $0.activationPolicy == .regular
+                    && $0.processIdentifier != ownPID
+                    && !$0.isTerminated
+                    && !pidsWithWindows.contains($0.processIdentifier)
+            }
+            .map { app in
+                TaskbarItem(
+                    id: TaskbarItem.appID(app.processIdentifier),
+                    title: app.localizedName ?? "Untitled",
+                    pid: app.processIdentifier,
+                    bundleIdentifier: app.bundleIdentifier,
+                    windowIDs: [],
+                    isActive: app.processIdentifier == frontmostPID,
+                    isMinimized: false,
+                    hasWindows: false,
+                    screenUUID: nil
+                )
+            }
     }
 
     /// The degraded bar: every regular running app, no window titles, no
