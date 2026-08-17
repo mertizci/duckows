@@ -43,6 +43,14 @@ final class WindowScanner {
     /// messaging timeout each time.
     private var breaker: [pid_t: (failures: Int, retryAfter: Date)] = [:]
 
+    /// Windows we have seen on screen at least once.
+    ///
+    /// This is what separates a real window from an app's internal phantom
+    /// without depending on the window still describing itself: a minimized
+    /// window may report neither a position nor a title — WhatsApp does exactly
+    /// that — but it was on screen a moment ago, and that is enough.
+    private var everVisible: Set<CGWindowID> = []
+
     private static let attributes = [
         kAXTitleAttribute as String,
         kAXRoleAttribute as String,
@@ -66,6 +74,7 @@ final class WindowScanner {
 
     private func performScan(context: ScanContext) -> [WindowRecord] {
         let onScreen = Self.onScreenWindowIDs()
+        var seen: Set<CGWindowID> = []
         let ownPID = ProcessInfo.processInfo.processIdentifier
         var records: [WindowRecord] = []
 
@@ -87,6 +96,10 @@ final class WindowScanner {
             breaker.removeValue(forKey: pid)
 
             for window in windows {
+                if let id = AXBridge.windowID(of: window) {
+                    seen.insert(id)
+                    if onScreen.contains(id) { everVisible.insert(id) }
+                }
                 if let record = makeRecord(
                     window: window,
                     app: app,
@@ -97,6 +110,10 @@ final class WindowScanner {
                 }
             }
         }
+
+        // Forget windows that no longer exist anywhere, so the set tracks
+        // this session rather than growing forever.
+        everVisible.formIntersection(seen)
 
         return records
     }
@@ -132,9 +149,12 @@ final class WindowScanner {
         // version dropped both whenever the minimized flag failed to read,
         // which is precisely when a window is minimized.
         //
-        // A window that still names itself is a real window the user knows
-        // about. An app's internal phantoms do not.
-        guard isVisible || !rawTitle.isEmpty else { return nil }
+        // Keeping it requires only that we have reason to believe it is real:
+        // it is on screen, it was on screen earlier, it says it is minimized,
+        // or it still names itself. A phantom satisfies none of these.
+        guard isVisible || everVisible.contains(id) || isMinimized || !rawTitle.isEmpty else {
+            return nil
+        }
 
         var frame = CGRect.zero
         if let origin = AXBridge.point(values[kAXPositionAttribute as String]),
