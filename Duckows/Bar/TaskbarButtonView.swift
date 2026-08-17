@@ -27,7 +27,7 @@ struct TaskbarButtonView: View {
                     // quieter one.
                     // Dimmed for a window that is out of sight, and for an
                     // app that is running with nothing open.
-                    .opacity(item.isMinimized || !item.hasWindows ? 0.5 : 1)
+                    .opacity(item.isHidden || !item.hasWindows ? 0.5 : 1)
             }
 
             if taskbar.showsWindowTitles {
@@ -35,7 +35,7 @@ struct TaskbarButtonView: View {
                     .font(.system(size: 12))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .foregroundStyle(item.isMinimized || !item.hasWindows ? .secondary : .primary)
+                    .foregroundStyle(item.isHidden || !item.hasWindows ? .secondary : .primary)
             }
 
             // Grouped buttons say how many windows they stand for.

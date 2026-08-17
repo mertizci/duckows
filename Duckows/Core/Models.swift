@@ -16,6 +16,9 @@ struct WindowRecord: Identifiable, Equatable {
     var isMinimized: Bool
     /// True macOS full screen (the green button), not merely zoomed.
     var isFullscreen: Bool
+    /// On screen right now. False for a minimized window and for the
+    /// windows of an app hidden with cmd-H.
+    var isVisible: Bool
     var frame: CGRect
     /// Sticky: a minimized window reports a garbage position, so the last known
     /// display is kept rather than letting it jump to another screen's bar.
@@ -29,6 +32,7 @@ struct WindowRecord: Identifiable, Equatable {
             && lhs.title == rhs.title
             && lhs.isMinimized == rhs.isMinimized
             && lhs.isFullscreen == rhs.isFullscreen
+            && lhs.isVisible == rhs.isVisible
             && lhs.frame == rhs.frame
             && lhs.screenUUID == rhs.screenUUID
     }
@@ -44,6 +48,8 @@ struct TaskbarItem: Identifiable, Equatable {
     let windowIDs: [CGWindowID]
     let isActive: Bool
     let isMinimized: Bool
+    /// Not on screen: minimized, or belonging to an app hidden with cmd-H.
+    var isHidden: Bool = false
     /// False for an app that is running with no windows of its own — the
     /// state macOS leaves an app in when you close its last window.
     var hasWindows: Bool = true

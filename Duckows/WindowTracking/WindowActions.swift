@@ -22,6 +22,14 @@ enum WindowActions {
         let wasMinimized = record.isMinimized
 
         queue.async {
+            // An app hidden with cmd-H has to be unhidden before any of its
+            // windows can come forward, and unhiding is an AppKit call rather
+            // than an AX one.
+            Task { @MainActor in
+                let app = NSRunningApplication(processIdentifier: pid)
+                if app?.isHidden == true { app?.unhide() }
+            }
+
             if wasMinimized {
                 AXUIElementSetAttributeValue(element, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
             }
@@ -51,7 +59,10 @@ enum WindowActions {
     /// Clicking the button of the window you are already in puts it away, the
     /// way a Windows taskbar behaves.
     static func toggle(_ record: WindowRecord, isFrontmost: Bool) {
-        if isFrontmost && !record.isMinimized {
+        // Only put a window away when it is genuinely in front of you. A
+        // minimized or hidden window belonging to the frontmost app would
+        // otherwise be "minimized" again and appear not to respond.
+        if isFrontmost && record.isVisible && !record.isMinimized {
             minimize(record)
         } else {
             raise(record)

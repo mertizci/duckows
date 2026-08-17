@@ -140,8 +140,9 @@ final class WindowRegistry: ObservableObject {
                     pid: record.pid,
                     bundleIdentifier: record.bundleIdentifier,
                     windowIDs: [record.id],
-                    isActive: record.pid == frontmostPID && !record.isMinimized,
+                    isActive: record.pid == frontmostPID && record.isVisible,
                     isMinimized: record.isMinimized,
+                    isHidden: !record.isVisible,
                     screenUUID: record.screenUUID
                 )
             }
@@ -162,6 +163,7 @@ final class WindowRegistry: ObservableObject {
                     windowIDs: group.map(\.id),
                     isActive: pid == frontmostPID,
                     isMinimized: group.allSatisfy(\.isMinimized),
+                    isHidden: group.allSatisfy { !$0.isVisible },
                     screenUUID: first.screenUUID
                 )
             }

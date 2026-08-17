@@ -120,11 +120,21 @@ final class WindowScanner {
 
         let isMinimized = values[kAXMinimizedAttribute as String] as? Bool ?? false
         let isFullscreen = values["AXFullScreen"] as? Bool ?? false
+        let isVisible = onScreen.contains(id)
 
-        // AX happily reports windows the window server no longer shows. A
-        // minimized window is legitimately absent from the on-screen list, so
-        // it is the one case that skips the check.
-        guard isMinimized || onScreen.contains(id) else { return nil }
+        let rawTitle = (values[kAXTitleAttribute as String] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        // AX also reports windows the window server does not show, and those
+        // have to be filtered out — but "is it on screen" is the wrong test on
+        // its own. A minimized window is legitimately absent from that list,
+        // and so are the windows of an app hidden with cmd-H; the previous
+        // version dropped both whenever the minimized flag failed to read,
+        // which is precisely when a window is minimized.
+        //
+        // A window that still names itself is a real window the user knows
+        // about. An app's internal phantoms do not.
+        guard isVisible || !rawTitle.isEmpty else { return nil }
 
         var frame = CGRect.zero
         if let origin = AXBridge.point(values[kAXPositionAttribute as String]),
@@ -135,18 +145,16 @@ final class WindowScanner {
                            height: size.height)
         }
 
-        let title = (values[kAXTitleAttribute as String] as? String)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
         return WindowRecord(
             id: id,
             pid: app.processIdentifier,
             element: window,
-            title: title.isEmpty ? (app.localizedName ?? "Untitled") : title,
+            title: rawTitle.isEmpty ? (app.localizedName ?? "Untitled") : rawTitle,
             appName: app.localizedName ?? "",
             bundleIdentifier: app.bundleIdentifier,
             isMinimized: isMinimized,
             isFullscreen: isFullscreen,
+            isVisible: isVisible,
             frame: frame,
             screenUUID: frame.isEmpty ? nil : context.screenUUID(for: frame)
         )
