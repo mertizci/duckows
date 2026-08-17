@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Duckows</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+
+	<!-- Agent app: no Dock tile, no menu bar of its own. -->
+	<key>LSUIElement</key>
+	<true/>
+
+	<!-- Only one taskbar may own the screen. Without this a login-item copy and
+	     a manually launched copy would fight over the system Dock's settings. -->
+	<key>LSMultipleInstancesProhibited</key>
+	<true/>
+
+	<!-- Duckows mutates the system Dock, so it MUST receive
+	     applicationWillTerminate to put the Dock back. Never allow a silent
+	     sudden kill. -->
+	<key>NSSupportsSuddenTermination</key>
+	<false/>
+	<key>NSSupportsAutomaticTermination</key>
+	<false/>
+
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Mert Izci</string>
+
+	<!-- Sleep / Restart / Shut Down / Log Out are Core Events sent to
+	     loginwindow. Accessibility and Screen Recording deliberately have no
+	     keys here — macOS generates those prompts itself. -->
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Duckows uses automation to sleep, restart, shut down, and log out from the Start menu.</string>
+
+	<!-- Only requested when the user turns on the Wi-Fi tray widget: macOS
+	     withholds the network name from apps without location access. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Duckows shows the name of your current Wi-Fi network. macOS requires location access to read it.</string>
+</dict>
+</plist>

@@ -1,0 +1,96 @@
+name: Duckows
+options:
+  bundleIdPrefix: com.duckows
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ALWAYS_SEARCH_USER_PATHS: NO
+    DEAD_CODE_STRIPPING: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+  configs:
+    debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+      SWIFT_OPTIMIZATION_LEVEL: "-Onone"
+      ONLY_ACTIVE_ARCH: YES
+    release:
+      SWIFT_COMPILATION_MODE: wholemodule
+      SWIFT_OPTIMIZATION_LEVEL: "-O"
+      ONLY_ACTIVE_ARCH: NO
+
+targets:
+  Duckows:
+    type: application
+    platform: macOS
+    sources:
+      - path: Duckows
+        excludes:
+          - "Signing.local.xcconfig"
+    settings:
+      base:
+        PRODUCT_NAME: Duckows
+        PRODUCT_BUNDLE_IDENTIFIER: com.duckows.app
+        INFOPLIST_FILE: Duckows/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Duckows/Duckows.entitlements
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        GENERATE_INFOPLIST_FILE: NO
+        COMBINE_HIDPI_IMAGES: YES
+        CURRENT_PROJECT_VERSION: 1
+        # Dev builds are deliberately 0.0.0. CI overrides this from the git tag,
+        # so the committed value only ever describes a local build — and 0.0.0
+        # makes every published release look newer when testing the updater.
+        MARKETING_VERSION: 0.0.0
+    dependencies:
+      - sdk: AppKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: ApplicationServices.framework
+      - sdk: CoreGraphics.framework
+      - sdk: IOKit.framework
+      - sdk: CoreAudio.framework
+      - sdk: AudioToolbox.framework
+      - sdk: CoreWLAN.framework
+      - sdk: ServiceManagement.framework
+      - sdk: Security.framework
+
+  DuckowsTests:
+    type: bundle.unit-test
+    platform: macOS
+    # Deliberately NOT hosted by the app. A hosted bundle would launch Duckows
+    # during `xcodebuild test`, which hides the system Dock on the dev machine
+    # and on the CI runner. Pure-logic files compile straight into the bundle.
+    sources:
+      - DuckowsTests
+      - Duckows/Update/SemanticVersion.swift
+      - Duckows/Update/GitHubReleaseService.swift
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.duckows.tests
+
+schemes:
+  Duckows:
+    build:
+      targets:
+        Duckows: all
+        DuckowsTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - DuckowsTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

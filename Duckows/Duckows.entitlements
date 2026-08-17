@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Not sandboxed: the Accessibility API, CGWindowList and in-place
+	     self-update are all incompatible with the App Sandbox. Distributed via
+	     Developer ID only, never the App Store.
+
+	     Under the hardened runtime, sending Apple events requires this
+	     entitlement. Drop it if NSAppleEventsUsageDescription is ever dropped. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+</dict>
+</plist>
