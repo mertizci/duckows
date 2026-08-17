@@ -8,7 +8,6 @@ struct AppearanceSettingsPage: View {
     @EnvironmentObject private var store: SettingsStore
 
     @State private var draft: AppearanceSettings = SettingsStore.shared.settings.appearance
-    @State private var tint: Color = .accentColor
 
     private var isGlassAvailable: Bool { BarStyle.glass.isAvailable }
 
@@ -46,12 +45,8 @@ struct AppearanceSettingsPage: View {
             SettingsCard(title: "Tint", subtitle: "Blends a color into the bar's material.") {
                 SettingsOptionRow(title: "Color") {
                     HStack(spacing: 8) {
-                        ColorPicker("", selection: $tint, supportsOpacity: false)
+                        ColorPicker("", selection: tintBinding, supportsOpacity: false)
                             .labelsHidden()
-                            .onChange(of: tint) { _, new in
-                                draft.tintHex = new.hexString
-                                store.setTintHex(new.hexString)
-                            }
                         Button("None") {
                             draft.tintHex = nil
                             store.setTintHex(nil)
@@ -105,6 +100,22 @@ struct AppearanceSettingsPage: View {
         .onChange(of: store.settings.appearance) { _, _ in syncDraft() }
     }
 
+    /// Written through rather than mirrored into `@State`.
+    ///
+    /// A `@State` colour plus `onChange` looks equivalent but feeds back on
+    /// itself: clearing the tint drops the draft to the accent colour, which
+    /// counts as a change, which writes the accent colour straight back — so
+    /// "None" would undo itself the instant it was pressed.
+    private var tintBinding: Binding<Color> {
+        Binding(
+            get: { draft.tintHex.flatMap(Color.init(hex:)) ?? .accentColor },
+            set: { new in
+                draft.tintHex = new.hexString
+                store.setTintHex(new.hexString)
+            }
+        )
+    }
+
     private var styleBinding: Binding<BarStyle> {
         Binding(
             get: { draft.style },
@@ -124,7 +135,6 @@ struct AppearanceSettingsPage: View {
 
     private func syncDraft() {
         draft = store.settings.appearance
-        tint = draft.tintHex.flatMap(Color.init(hex:)) ?? .accentColor
     }
 }
 
