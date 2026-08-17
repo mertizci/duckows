@@ -8,13 +8,19 @@ import ApplicationServices
 /// inside AppKit from the Dock's rect and the menu bar height, neither of which
 /// a third party can write. So the behaviour is reproduced after the fact.
 ///
-/// The hard part is not the resize, it is deciding *when*. An earlier version
-/// keyed off "does this window cover most of the screen", which also matches a
-/// large window the user merely dragged downwards, so it resized windows that
-/// were meant to be left alone. The signal used here is that **dragging moves a
-/// window without resizing it**: only a size change — a zoom, a double-clicked
-/// title bar, a Magnet-style snap — is treated as an attempt to fill the
-/// screen.
+/// The hard part is not the resize, it is deciding *when*, and it took two
+/// wrong answers to get there:
+///
+/// - "Does it cover most of the screen" also matches a large window the user
+///   merely dragged downwards, so it moved windows that were meant to be left
+///   alone.
+/// - "Is it screen-filling" then missed Magnet's half and quarter snaps, which
+///   resize into the bar's strip while covering only part of the display.
+///
+/// Two signals together do the job. **Dragging moves a window without resizing
+/// it**, so only a size change is considered at all; and every snap, whatever
+/// its size, leaves the window **flush against the edge it snapped to**, which
+/// a window sized by hand practically never is.
 @MainActor
 final class MaximizeGuard {
     static let shared = MaximizeGuard()
@@ -36,9 +42,12 @@ final class MaximizeGuard {
     private static let surrenderThreshold = 4
     private static let surrenderWindow: TimeInterval = 2.0
 
-    /// How close to screen-filling counts as "being maximized".
-    private static let fillWidthRatio: CGFloat = 0.97
-    private static let fillHeightRatio: CGFloat = 0.93
+    /// How close to the screen edge counts as snapped.
+    ///
+    /// Snapping — a zoom, a double-clicked title bar, a Magnet half or quarter
+    /// — leaves the window flush against the edge it snapped to. A window sized
+    /// by hand practically never lands exactly there.
+    private static let snapTolerance: CGFloat = 4
 
     /// Ignore sub-pixel and rounding wobble when comparing sizes.
     private static let sizeEpsilon: CGFloat = 2
@@ -70,7 +79,11 @@ final class MaximizeGuard {
         previousFrames.keys.filter { !live.contains($0) }.forEach(forget)
 
         for record in records where !record.isMinimized && !record.isFullscreen {
-            defer { previousFrames[record.id] = record.frame }
+            // Deliberately not a `defer`: when a window is corrected the stored
+            // frame has to be the corrected one, and a deferred assignment
+            // would run afterwards and put the pre-correction frame back.
+            var settled = record.frame
+            defer { previousFrames[record.id] = settled }
 
             guard !writeGuard.contains(record.id), !surrendered.contains(record.id) else { continue }
             guard let uuid = record.screenUUID,
@@ -83,22 +96,32 @@ final class MaximizeGuard {
                     || abs($0.height - record.frame.height) > Self.sizeEpsilon
             } ?? true // first sight: an already-maximized window still counts
 
-            guard didResize, isFillingScreen(record.frame, geometry: geometry) else { continue }
+            guard didResize, isSnappedToBarEdge(record.frame, geometry: geometry) else { continue }
 
             let target = record.frame.intersection(geometry.usable)
-            guard target.width > 200, target.height > 200, target != record.frame else { continue }
+            // A quarter snap is legitimately small; only refuse to shrink a
+            // window into uselessness.
+            guard target.width > 120, target.height > 80, target != record.frame else { continue }
 
             resize(record, to: target)
-            previousFrames[record.id] = target
+            settled = target
         }
     }
 
-    /// True when the window is trying to occupy the whole display, rather than
-    /// merely being large.
-    private func isFillingScreen(_ frame: CGRect, geometry: ScreenGeometry) -> Bool {
+    /// True when the window is flush against the edge the bar lives on.
+    ///
+    /// An earlier version asked whether the window filled the screen, which
+    /// missed Magnet's half and quarter snaps — those resize the window into
+    /// the bar's strip while covering only part of the display. Being flush
+    /// with the edge is what every snap has in common, whatever its size.
+    private func isSnappedToBarEdge(_ frame: CGRect, geometry: ScreenGeometry) -> Bool {
         let full = geometry.usable.union(geometry.bar)
-        return frame.width >= full.width * Self.fillWidthRatio
-            && frame.height >= full.height * Self.fillHeightRatio
+        switch SettingsStore.shared.settings.taskbar.edge {
+        case .bottom:
+            return abs(frame.minY - full.minY) <= Self.snapTolerance
+        case .top:
+            return abs(frame.maxY - full.maxY) <= Self.snapTolerance
+        }
     }
 
     private func resize(_ record: WindowRecord, to frame: CGRect) {
