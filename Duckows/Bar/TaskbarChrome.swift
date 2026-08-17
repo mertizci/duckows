@@ -10,9 +10,9 @@ import SwiftUI
 struct TaskbarChrome: View {
     let appearance: AppearanceSettings
     let taskbar: TaskbarSettings
-    /// Real window buttons. The settings preview leaves this empty and passes
-    /// `sampleItems` instead.
-    var items: [TaskbarItem] = []
+    /// Real window buttons, in display-order groups the bar separates.
+    /// The settings preview leaves this empty and passes `sampleItems`.
+    var itemGroups: [[TaskbarItem]] = []
     var needsAccessibility = false
     /// Stand-ins used only by the settings preview.
     var sampleItems: [SampleItem] = []
@@ -45,8 +45,18 @@ struct TaskbarChrome: View {
                     ForEach(sampleItems) { item in
                         SampleButton(item: item, taskbar: taskbar)
                     }
-                    ForEach(items) { item in
-                        TaskbarButtonView(item: item, taskbar: taskbar, screenUUID: screenUUID)
+                    ForEach(Array(itemGroups.enumerated()), id: \.offset) { index, group in
+                        if index > 0 {
+                            // Marks where one display's windows end and the
+                            // next display's begin.
+                            Divider()
+                                .frame(height: taskbar.iconSize * 0.8)
+                                .opacity(0.45)
+                                .padding(.horizontal, 2)
+                        }
+                        ForEach(group) { item in
+                            TaskbarButtonView(item: item, taskbar: taskbar, screenUUID: screenUUID)
+                        }
                     }
                 }
             }

@@ -278,6 +278,48 @@ final class WindowRegistry: ObservableObject {
 
     var frontmostApplication: pid_t? { frontmostPID }
 
+    /// The buttons one bar should show, in groups that the view separates.
+    ///
+    /// Grouping is by display, ordered left to right, so a combined bar reads
+    /// the way the desk is laid out rather than in whatever order the windows
+    /// were found.
+    func itemGroups(forScreen uuid: String?) -> [[TaskbarItem]] {
+        let distribution = SettingsStore.shared.settings.taskbar.windowDistribution
+        let windowItems = items.filter(\.hasWindows)
+        let idle = items.filter { !$0.hasWindows }
+
+        switch distribution {
+        case .perDisplay:
+            guard let uuid else { return [items].filter { !$0.isEmpty } }
+            let mine = windowItems.filter { $0.screenUUID == nil || $0.screenUUID == uuid }
+            return [mine, idle].filter { !$0.isEmpty }
+
+        case .allOnMainDisplay:
+            // NSScreen.main follows the keyboard, which would move the whole
+            // bar's contents around as you click between displays. The primary
+            // display — the one at the origin, with the menu bar — is what
+            // "main display" means in System Settings, and it is the first.
+            let primary = NSScreen.screens.first.flatMap { ScreenIdentity(screen: $0)?.uuid }
+            guard uuid == primary else { return [] }
+            return combinedGroups(windowItems, idle: idle)
+
+        case .allOnEveryDisplay:
+            return combinedGroups(windowItems, idle: idle)
+        }
+    }
+
+    private func combinedGroups(_ windowItems: [TaskbarItem], idle: [TaskbarItem]) -> [[TaskbarItem]] {
+        let ordered = NSScreen.screens
+            .sorted { $0.frame.minX < $1.frame.minX }
+            .compactMap { ScreenIdentity(screen: $0)?.uuid }
+
+        var groups = ordered.map { uuid in windowItems.filter { $0.screenUUID == uuid } }
+        // Windows we could not place on any display still deserve a button.
+        groups.append(windowItems.filter { $0.screenUUID == nil })
+        groups.append(idle)
+        return groups.filter { !$0.isEmpty }
+    }
+
     /// The buttons one bar should show.
     func items(forScreen uuid: String?) -> [TaskbarItem] {
         guard SettingsStore.shared.settings.taskbar.showsOnAllDisplays, let uuid else { return items }

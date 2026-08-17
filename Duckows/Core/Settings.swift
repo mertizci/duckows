@@ -39,6 +39,39 @@ enum BarStyle: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Which windows each display's bar shows.
+enum WindowDistribution: String, Codable, CaseIterable, Identifiable {
+    /// Every bar shows only the windows on its own display.
+    case perDisplay
+    /// The main display's bar shows everything, grouped by display; the other
+    /// bars show no window buttons.
+    case allOnMainDisplay
+    /// Every bar shows everything, grouped by display.
+    case allOnEveryDisplay
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .perDisplay:       return "Each display shows its own windows"
+        case .allOnMainDisplay: return "Main display shows every window"
+        case .allOnEveryDisplay: return "Every display shows every window"
+        }
+    }
+
+    var explanation: String {
+        switch self {
+        case .perDisplay:
+            return "A window appears on the bar of the display it is on."
+        case .allOnMainDisplay:
+            return "One bar for everything, grouped by display from left to right. "
+                + "The other displays keep their bar but show no window buttons."
+        case .allOnEveryDisplay:
+            return "The same full list on every display, grouped from left to right."
+        }
+    }
+}
+
 /// One taskbar button per window, or one per application.
 enum GroupingMode: String, Codable, CaseIterable, Identifiable {
     case perWindow
@@ -102,6 +135,7 @@ struct AppearanceSettings: Codable, Equatable {
 struct TaskbarSettings: Codable, Equatable {
     var edge: BarEdge
     var grouping: GroupingMode
+    var windowDistribution: WindowDistribution
     var showsWindowTitles: Bool
     var iconSize: Double
     var maxButtonWidth: Double
@@ -114,6 +148,7 @@ struct TaskbarSettings: Codable, Equatable {
     static let `default` = TaskbarSettings(
         edge: .bottom,
         grouping: .perWindow,
+        windowDistribution: .perDisplay,
         showsWindowTitles: true,
         iconSize: 24,
         maxButtonWidth: 180,
@@ -127,6 +162,8 @@ struct TaskbarSettings: Codable, Equatable {
         let d = Self.default
         edge = try c.decodeIfPresent(BarEdge.self, forKey: .edge) ?? d.edge
         grouping = try c.decodeIfPresent(GroupingMode.self, forKey: .grouping) ?? d.grouping
+        windowDistribution = try c.decodeIfPresent(WindowDistribution.self, forKey: .windowDistribution)
+            ?? d.windowDistribution
         showsWindowTitles = try c.decodeIfPresent(Bool.self, forKey: .showsWindowTitles) ?? d.showsWindowTitles
         iconSize = try c.decodeIfPresent(Double.self, forKey: .iconSize) ?? d.iconSize
         maxButtonWidth = try c.decodeIfPresent(Double.self, forKey: .maxButtonWidth) ?? d.maxButtonWidth
@@ -135,10 +172,12 @@ struct TaskbarSettings: Codable, Equatable {
         disabledDisplayUUIDs = try c.decodeIfPresent([String].self, forKey: .disabledDisplayUUIDs) ?? d.disabledDisplayUUIDs
     }
 
-    init(edge: BarEdge, grouping: GroupingMode, showsWindowTitles: Bool, iconSize: Double,
+    init(edge: BarEdge, grouping: GroupingMode, windowDistribution: WindowDistribution,
+         showsWindowTitles: Bool, iconSize: Double,
          maxButtonWidth: Double, autoHide: Bool, showsOnAllDisplays: Bool, disabledDisplayUUIDs: [String]) {
         self.edge = edge
         self.grouping = grouping
+        self.windowDistribution = windowDistribution
         self.showsWindowTitles = showsWindowTitles
         self.iconSize = iconSize
         self.maxButtonWidth = maxButtonWidth

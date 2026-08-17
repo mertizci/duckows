@@ -13,7 +13,7 @@ struct TaskbarView: View {
         TaskbarChrome(
             appearance: settingsStore.settings.appearance,
             taskbar: settingsStore.settings.taskbar,
-            items: registry.items(forScreen: screenUUID),
+            itemGroups: registry.itemGroups(forScreen: screenUUID),
             needsAccessibility: !permissions.isAccessibilityTrusted,
             screenUUID: screenUUID
         )

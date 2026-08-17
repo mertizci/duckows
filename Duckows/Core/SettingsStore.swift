@@ -91,6 +91,10 @@ final class SettingsStore: ObservableObject {
         updateSettings { $0.taskbar.grouping = mode }
     }
 
+    func setWindowDistribution(_ mode: WindowDistribution) {
+        updateSettings { $0.taskbar.windowDistribution = mode }
+    }
+
     func setShowsWindowTitles(_ shows: Bool) {
         updateSettings { $0.taskbar.showsWindowTitles = shows }
     }

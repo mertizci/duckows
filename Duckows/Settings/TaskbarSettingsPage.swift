@@ -64,6 +64,23 @@ struct TaskbarSettingsPage: View {
                 title: "Displays",
                 subtitle: "Duckows puts an independent bar on each display."
             ) {
+                SettingsOptionRow(title: "Which windows each bar shows") {
+                    Picker("", selection: distributionBinding) {
+                        ForEach(WindowDistribution.allCases) { mode in
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 260)
+                }
+
+                Text(draft.windowDistribution.explanation)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Divider()
+
                 SettingsToggleRow(
                     title: "Show on all displays",
                     subtitle: "Off shows the bar only on your main display.",
@@ -90,6 +107,13 @@ struct TaskbarSettingsPage: View {
 
     private var edgeBinding: Binding<BarEdge> {
         Binding(get: { draft.edge }, set: { draft.edge = $0; store.setBarEdge($0) })
+    }
+
+    private var distributionBinding: Binding<WindowDistribution> {
+        Binding(
+            get: { draft.windowDistribution },
+            set: { draft.windowDistribution = $0; store.setWindowDistribution($0) }
+        )
     }
 
     private var groupingBinding: Binding<GroupingMode> {
