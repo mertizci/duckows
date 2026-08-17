@@ -46,6 +46,10 @@ struct TaskbarChrome: View {
 
             Spacer(minLength: 0)
 
+            if tray.mirrorsMenuBarItems {
+                MenuBarItemsView()
+            }
+
             if showsClock {
                 TrayView(tray: tray, iconSize: taskbar.iconSize)
             }

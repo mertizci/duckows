@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // are what notice the grant arriving.
             WindowRegistry.shared.start()
             WorkspaceEvents.shared.start()
+            MenuBarMirror.shared.start()
             PermissionsOnboardingWindowController.shared.showIfNeeded()
 
             NotificationCenter.default.addObserver(
@@ -54,6 +55,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // may not have landed yet.
         MainActor.assumeIsolated {
             DockController.shared.restore()
+            // Not strictly needed — the spacer dies with the process and the
+            // menu bar lays itself back out — but putting the items back before
+            // we go means the user never sees a menu bar mid-reflow.
+            MenuBarHider.shared.setEnabled(false)
             SettingsStore.shared.saveNow()
         }
     }

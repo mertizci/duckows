@@ -176,6 +176,34 @@ struct StartMenuView: View {
 
             Spacer(minLength: 8)
 
+            // Duckows' own controls have to live here, not only in its menu bar
+            // item: with menu bar mirroring turned on that item is pushed off
+            // the screen along with everyone else's, and this becomes the only
+            // way back to Settings — or out of the app.
+            Menu {
+                Button("Duckows Settings…") {
+                    StartMenuPanelController.shared.close()
+                    SettingsWindowController.shared.show()
+                }
+                Button("Check for Updates…") {
+                    StartMenuPanelController.shared.close()
+                    UpdateController.shared.checkForUpdates(silent: false)
+                }
+                Divider()
+                Button("Quit Duckows") {
+                    StartMenuPanelController.shared.close()
+                    NSApp.terminate(nil)
+                }
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 11, weight: .medium))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 5)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+
             Menu {
                 ForEach(PowerAction.allCases) { action in
                     Button {

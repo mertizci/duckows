@@ -69,6 +69,27 @@ struct TraySettingsPage: View {
                 )
             }
 
+            SettingsCard(title: "Menu Bar Items") {
+                SettingsToggleRow(
+                    title: "Show other apps' menu bar icons here",
+                    subtitle: "Third-party status icons appear in the bar, left of the widgets above. Apple's own — Wi-Fi, Bluetooth, Sound, Battery, the clock — are the native widgets above instead.",
+                    isOn: boolBinding(\.mirrorsMenuBarItems)
+                )
+
+                if draft.mirrorsMenuBarItems {
+                    SettingsToggleRow(
+                        title: "Hide them from the menu bar",
+                        subtitle: "Pushes the real icons off the right-hand end while Duckows runs. Two things to know: their menus still open at the top of the screen, because the owning app draws them there and no API can move them; and this relies on undocumented layout behaviour, so a macOS update could stop it working. Nothing is written on another app's behalf — quitting Duckows restores the menu bar.",
+                        isOn: boolBinding(\.hidesMirroredItems)
+                    )
+
+                    StatusBanner(
+                        style: .info,
+                        message: "Duckows' own menu bar icon is hidden too. Settings and Quit move to the gear button in the Start menu."
+                    )
+                }
+            }
+
             SettingsCard(title: "Battery") {
                 SettingsToggleRow(
                     title: "Show the percentage",

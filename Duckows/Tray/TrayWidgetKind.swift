@@ -82,6 +82,10 @@ struct TraySettings: Codable, Equatable {
     /// Off by default: the Windows notification area shows the battery as an
     /// icon alone, and the exact figure is one click away in the popover.
     var showsBatteryPercentage: Bool
+    /// Mirror other apps' menu bar extras into the bar.
+    var mirrorsMenuBarItems: Bool
+    /// Push the real ones off the menu bar while Duckows is running.
+    var hidesMirroredItems: Bool
 
     static let `default` = TraySettings(
         widgets: TrayWidgetKind.defaultOrder.map {
@@ -90,7 +94,9 @@ struct TraySettings: Codable, Equatable {
         clockFormat: .system,
         showsDate: true,
         showsSeconds: false,
-        showsBatteryPercentage: false
+        showsBatteryPercentage: false,
+        mirrorsMenuBarItems: false,
+        hidesMirroredItems: false
     )
 
     init(from decoder: Decoder) throws {
@@ -106,14 +112,21 @@ struct TraySettings: Codable, Equatable {
         showsSeconds = try c.decodeIfPresent(Bool.self, forKey: .showsSeconds) ?? d.showsSeconds
         showsBatteryPercentage = try c.decodeIfPresent(Bool.self, forKey: .showsBatteryPercentage)
             ?? d.showsBatteryPercentage
+        mirrorsMenuBarItems = try c.decodeIfPresent(Bool.self, forKey: .mirrorsMenuBarItems)
+            ?? d.mirrorsMenuBarItems
+        hidesMirroredItems = try c.decodeIfPresent(Bool.self, forKey: .hidesMirroredItems)
+            ?? d.hidesMirroredItems
     }
 
     init(widgets: [TrayWidgetConfig], clockFormat: ClockFormat, showsDate: Bool,
-         showsSeconds: Bool, showsBatteryPercentage: Bool) {
+         showsSeconds: Bool, showsBatteryPercentage: Bool,
+         mirrorsMenuBarItems: Bool, hidesMirroredItems: Bool) {
         self.widgets = widgets
         self.clockFormat = clockFormat
         self.showsDate = showsDate
         self.showsSeconds = showsSeconds
         self.showsBatteryPercentage = showsBatteryPercentage
+        self.mirrorsMenuBarItems = mirrorsMenuBarItems
+        self.hidesMirroredItems = hidesMirroredItems
     }
 }
