@@ -95,6 +95,10 @@ final class SettingsStore: ObservableObject {
         updateSettings { $0.taskbar.showsWindowTitles = shows }
     }
 
+    func setKeepsMaximizedWindowsClear(_ enabled: Bool) {
+        updateSettings { $0.general.keepsMaximizedWindowsClear = enabled }
+    }
+
     func setHidesSystemDock(_ enabled: Bool) {
         updateSettings { $0.general.hidesSystemDock = enabled }
     }

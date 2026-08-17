@@ -107,6 +107,26 @@ final class TaskbarWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - Geometry
 
+    /// The strip the bar occupies, whether or not it is currently concealed.
+    var barFrame: NSRect { revealedFrame }
+
+    /// The display minus the menu bar and minus the bar — what a maximized
+    /// window should be allowed to fill.
+    var usableFrame: NSRect {
+        let full = screen.frame
+        let menuBar = ScreenRegistry.shared.menuBarInset(for: screen)
+        var usable = NSRect(x: full.minX, y: full.minY,
+                            width: full.width, height: full.height - menuBar)
+        switch SettingsStore.shared.settings.taskbar.edge {
+        case .bottom:
+            usable.origin.y += thickness
+            usable.size.height -= thickness
+        case .top:
+            usable.size.height -= thickness
+        }
+        return usable
+    }
+
     private var thickness: CGFloat {
         SettingsStore.shared.settings.appearance.barThickness
     }

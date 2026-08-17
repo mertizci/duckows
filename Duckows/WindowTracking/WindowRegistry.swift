@@ -127,6 +127,7 @@ final class WindowRegistry: ObservableObject {
         }
 
         rebuildItems()
+        MaximizeGuard.shared.apply(to: merged)
     }
 
     private func rebuildItems() {

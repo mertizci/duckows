@@ -56,6 +56,28 @@ struct GeneralSettingsPage: View {
 
             SettingsCard(title: "Desktop") {
                 SettingsToggleRow(
+                    title: "Stop maximized windows at the bar",
+                    subtitle: "Zooming a window fills the screen up to the taskbar, like Windows. "
+                        + "Windows you move yourself are never touched.",
+                    isOn: Binding(
+                        get: { store.settings.general.keepsMaximizedWindowsClear },
+                        set: { store.setKeepsMaximizedWindowsClear($0) }
+                    ),
+                    isEnabled: permissions.isAccessibilityTrusted
+                )
+
+                if !permissions.isAccessibilityTrusted {
+                    StatusBanner(
+                        style: .warning,
+                        message: "This needs Accessibility, which is how Duckows resizes windows.",
+                        actionTitle: "Grant…",
+                        action: { PermissionsOnboardingWindowController.shared.show() }
+                    )
+                }
+
+                Divider()
+
+                SettingsToggleRow(
                     title: "Hide the macOS Dock",
                     subtitle: "Restored exactly as you had it when Duckows quits.",
                     isOn: Binding(

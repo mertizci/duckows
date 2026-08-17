@@ -37,6 +37,9 @@ final class TaskbarPresenter: ObservableObject {
             .sink { [weak self] _ in
                 self?.synchronize(with: ScreenRegistry.shared.screens)
                 DockController.shared.apply()
+                // The bar may have moved, so what counts as maximized changed
+                // with it.
+                MaximizeGuard.shared.reset()
             }
             .store(in: &cancellables)
 
@@ -72,6 +75,17 @@ final class TaskbarPresenter: ObservableObject {
     /// the pointer is reaching for it.
     func pointerMoved(to point: NSPoint) {
         controllers.values.forEach { $0.pointerMoved(to: point) }
+    }
+
+    /// The bar's strip and the area left over on one display.
+    ///
+    /// Nil while auto-hide is on or that display is showing a full-screen
+    /// window: in neither case is the bar holding any space.
+    func geometry(forScreen uuid: String) -> ScreenGeometry? {
+        guard !SettingsStore.shared.settings.taskbar.autoHide,
+              !WindowRegistry.shared.fullscreenScreenUUIDs.contains(uuid),
+              let controller = controllers[ScreenIdentity(uuid: uuid)] else { return nil }
+        return ScreenGeometry(bar: controller.barFrame, usable: controller.usableFrame)
     }
 
     private func synchronize(with screens: [NSScreen]) {

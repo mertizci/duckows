@@ -148,8 +148,16 @@ struct TaskbarSettings: Codable, Equatable {
     }
 }
 
+/// The bar's strip and what is left of a display beside it.
+struct ScreenGeometry {
+    let bar: CGRect
+    let usable: CGRect
+}
+
 struct GeneralSettings: Codable, Equatable {
     var checksForUpdatesAutomatically: Bool
+    /// Stop maximized windows at the bar, the way a Windows taskbar does.
+    var keepsMaximizedWindowsClear: Bool
     /// Hide the macOS Dock while Duckows is running; restored on quit.
     var hidesSystemDock: Bool
 
@@ -158,6 +166,7 @@ struct GeneralSettings: Codable, Equatable {
     /// reality the moment the user flips the switch in System Settings.
     static let `default` = GeneralSettings(
         checksForUpdatesAutomatically: true,
+        keepsMaximizedWindowsClear: true,
         hidesSystemDock: true
     )
 
@@ -166,11 +175,14 @@ struct GeneralSettings: Codable, Equatable {
         let d = Self.default
         checksForUpdatesAutomatically = try c.decodeIfPresent(Bool.self, forKey: .checksForUpdatesAutomatically)
             ?? d.checksForUpdatesAutomatically
+        keepsMaximizedWindowsClear = try c.decodeIfPresent(Bool.self, forKey: .keepsMaximizedWindowsClear)
+            ?? d.keepsMaximizedWindowsClear
         hidesSystemDock = try c.decodeIfPresent(Bool.self, forKey: .hidesSystemDock) ?? d.hidesSystemDock
     }
 
-    init(checksForUpdatesAutomatically: Bool, hidesSystemDock: Bool) {
+    init(checksForUpdatesAutomatically: Bool, keepsMaximizedWindowsClear: Bool, hidesSystemDock: Bool) {
         self.checksForUpdatesAutomatically = checksForUpdatesAutomatically
+        self.keepsMaximizedWindowsClear = keepsMaximizedWindowsClear
         self.hidesSystemDock = hidesSystemDock
     }
 }
