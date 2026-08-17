@@ -21,19 +21,31 @@ final class TaskbarPresenter: ObservableObject {
             .sink { [weak self] screens in self?.synchronize(with: screens) }
             .store(in: &cancellables)
 
-        // Geometry and appearance both live in settings, so any change may move
-        // the bars. Re-pinning is cheap enough not to need finer filtering.
+        // Settings changes can both move the bars and change which displays get
+        // one, so this runs the full reconcile rather than only re-pinning
+        // frames — otherwise turning off "show on all displays" would do
+        // nothing until the next display event.
         SettingsStore.shared.$settings
             .removeDuplicates()
-            .sink { [weak self] _ in self?.refreshFrames() }
+            .sink { [weak self] _ in
+                self?.synchronize(with: ScreenRegistry.shared.screens)
+            }
             .store(in: &cancellables)
 
         synchronize(with: ScreenRegistry.shared.screens)
+        AutoHideMonitor.shared.start()
     }
 
     func stop() {
+        AutoHideMonitor.shared.stop()
         controllers.values.forEach { $0.hide() }
         controllers.removeAll()
+    }
+
+    /// Forwarded from `AutoHideMonitor`; each bar decides for itself whether
+    /// the pointer is reaching for it.
+    func pointerMoved(to point: NSPoint) {
+        controllers.values.forEach { $0.pointerMoved(to: point) }
     }
 
     private func synchronize(with screens: [NSScreen]) {
@@ -72,7 +84,4 @@ final class TaskbarPresenter: ObservableObject {
         }
     }
 
-    private func refreshFrames() {
-        controllers.values.forEach { $0.updateFrame() }
-    }
 }

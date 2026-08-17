@@ -13,6 +13,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Duckows has no Dock icon, so `open -a Duckows` on a running instance is
+    /// how people ask it for something. Settings is the only sensible answer.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        MainActor.assumeIsolated {
+            SettingsWindowController.shared.show()
+        }
+        return true
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         // Duckows will mutate the system Dock from phase 5 onward; restoring it
         // here is what makes every exit path safe, so the hook exists from the
@@ -53,6 +62,11 @@ private struct MenuBarContentView: View {
         Text("Duckows \(updateController.currentVersion)")
 
         Divider()
+
+        Button("Settings…") {
+            SettingsWindowController.shared.show()
+        }
+        .keyboardShortcut(",")
 
         Picker("Bar position", selection: edgeBinding) {
             ForEach(BarEdge.allCases) { edge in

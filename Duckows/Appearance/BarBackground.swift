@@ -50,11 +50,15 @@ struct BarBackground: View {
             }
         }
         .overlay {
-            // Only the pre-26 paths need a manual tint; the glass path folds the
-            // tint into its own lighting model. A plain .normal overlay over an
-            // NSVisualEffectView flattens the vibrancy into a dull wash, so this
-            // uses .plusLighter.
-            if let tint, !isUsingGlass {
+            // One tint mechanism for every style. `Glass.tint(_:)` was the
+            // obvious choice for the macOS 26 path, but measuring the rendered
+            // pixels showed it has no effect on a `Color.clear` host — a red
+            // tint and a blue tint produced byte-identical output — so the
+            // overlay does the work everywhere.
+            //
+            // .plusLighter rather than .normal: a normal overlay over a
+            // vibrancy material flattens it into a dull wash.
+            if let tint {
                 shape.fill(tint.opacity(appearance.tintOpacity)).blendMode(.plusLighter)
             }
         }
@@ -62,19 +66,9 @@ struct BarBackground: View {
         .opacity(appearance.backgroundOpacity)
     }
 
-    private var isUsingGlass: Bool {
-        guard appearance.style == .glass else { return false }
-        if #available(macOS 26, *) { return true }
-        return false
-    }
-
     @available(macOS 26, *)
     private func glassBackground(_ shape: some Shape) -> some View {
-        var glass: Glass = .regular
-        if let tint {
-            glass = glass.tint(tint.opacity(appearance.tintOpacity))
-        }
-        return Color.clear.glassEffect(glass, in: shape)
+        Color.clear.glassEffect(.regular, in: shape)
     }
 
     private func materialBackground(_ shape: some Shape) -> some View {
