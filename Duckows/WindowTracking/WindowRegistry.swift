@@ -98,7 +98,7 @@ final class WindowRegistry: ObservableObject {
 
         let started = Date()
         let context = ScanContext.current()
-        scanner.scan(context: context) { [weak self] result in
+        scanner.scan(context: context, previous: records) { [weak self] result in
             guard let self else { return }
             let records = result.records
             let elapsed = Date().timeIntervalSince(started)
@@ -109,7 +109,7 @@ final class WindowRegistry: ObservableObject {
                 NSLog("Duckows: slow window sweep – %.0f ms for %d windows",
                       elapsed * 1000, records.count)
             }
-            self.apply(records, liveWindowIDs: result.liveWindowIDs)
+            self.apply(records)
             self.isScanning = false
             if self.needsAnotherPass {
                 self.needsAnotherPass = false
@@ -118,31 +118,7 @@ final class WindowRegistry: ObservableObject {
         }
     }
 
-    private func apply(_ fresh: [WindowRecord], liveWindowIDs: Set<CGWindowID>) {
-        // AX stops reporting some apps' windows the moment they are minimized —
-        // WhatsApp and Notes both do — and the app would then fall into the
-        // group with nothing open, taking a new slot at the far right and
-        // looking as though it had been closed.
-        //
-        // The window server still lists those windows, so a window we knew
-        // about that is missing from this sweep is carried forward, marked out
-        // of sight, for as long as the window server agrees it exists. Closing
-        // it for real removes it there too, and only then does it go.
-        //
-        // Matched by window, never by app: Warp keeps a 500x500 helper window
-        // around after its last real window closes, so asking whether the app
-        // still owns *a* window resurrected windows the user had just closed.
-        var fresh = fresh
-        let freshIDs = Set(fresh.map(\.id))
-        for record in records
-        where !freshIDs.contains(record.id)
-            && liveWindowIDs.contains(record.id)
-            && NSRunningApplication(processIdentifier: record.pid)?.isTerminated == false {
-            var carried = record
-            carried.isVisible = false
-            fresh.append(carried)
-        }
-
+    private func apply(_ fresh: [WindowRecord]) {
         // A minimized window reports a stale position, so it would otherwise
         // appear to jump to whichever display the origin happens to land on.
         var merged = fresh

@@ -64,24 +64,26 @@ final class WindowScanner {
 
     struct ScanResult {
         let records: [WindowRecord]
-        /// Windows the window server still knows about, on screen or not.
-        ///
-        /// Ground truth for "does this window still exist", which is precisely
-        /// what AX stops answering once a window is minimized.
-        let liveWindowIDs: Set<CGWindowID>
     }
 
-    func scan(context: ScanContext, completion: @escaping @MainActor (ScanResult) -> Void) {
+    /// - Parameter previous: last sweep's records. Any that this sweep misses
+    ///   are asked directly whether they still exist, on this queue, because
+    ///   that question is another round of IPC.
+    func scan(
+        context: ScanContext,
+        previous: [WindowRecord],
+        completion: @escaping @MainActor (ScanResult) -> Void
+    ) {
         queue.async { [weak self] in
             guard let self else { return }
-            let result = self.performScan(context: context)
+            let result = self.performScan(context: context, previous: previous)
             Task { @MainActor in completion(result) }
         }
     }
 
     // MARK: - Scanning
 
-    private func performScan(context: ScanContext) -> ScanResult {
+    private func performScan(context: ScanContext, previous: [WindowRecord]) -> ScanResult {
         let onScreen = Self.onScreenWindowIDs()
         var seen: Set<CGWindowID> = []
         let ownPID = ProcessInfo.processInfo.processIdentifier
@@ -124,33 +126,19 @@ final class WindowScanner {
         // this session rather than growing forever.
         everVisible.formIntersection(seen)
 
-        return ScanResult(records: records, liveWindowIDs: Self.liveWindowIDs())
-    }
+        // Some apps stop listing a window the moment it is minimized —
+        // WhatsApp and Notes both do — so a window missing from this sweep is
+        // not necessarily gone. Ask the window itself: a closed window's
+        // element is invalid, a minimized one's is not.
+        let foundIDs = Set(records.map(\.id))
+        for record in previous where !foundIDs.contains(record.id) {
+            guard AXBridge.isAlive(record.element) else { continue }
+            var carried = record
+            carried.isVisible = false
+            records.append(carried)
+        }
 
-    /// Windows the window server considers real, on screen or not.
-    ///
-    /// Deliberately keyed by window, not by app. Asking whether an *app* still
-    /// owns a window is too coarse: Warp keeps a 500x500 helper around after
-    /// its last real window is closed, so an app-level answer kept resurrecting
-    /// windows the user had just closed.
-    ///
-    /// Every app also owns full-width strips 30 or so points tall — its menu
-    /// bar, one per display — so a size floor separates a document window from
-    /// the furniture.
-    private static func liveWindowIDs() -> Set<CGWindowID> {
-        let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
-        guard let infos = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
-            return []
-        }
-        var ids: Set<CGWindowID> = []
-        for info in infos {
-            guard (info[kCGWindowLayer as String] as? Int) == 0,
-                  let id = info[kCGWindowNumber as String] as? CGWindowID,
-                  let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
-                  (bounds["Width"] ?? 0) >= 200, (bounds["Height"] ?? 0) >= 150 else { continue }
-            ids.insert(id)
-        }
-        return ids
+        return ScanResult(records: records)
     }
 
     private func makeRecord(

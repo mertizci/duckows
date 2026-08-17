@@ -29,6 +29,24 @@ enum AXBridge {
         return element
     }
 
+    /// Whether this element still refers to a window that exists.
+    ///
+    /// Closing a window invalidates its element: AX answers
+    /// `.invalidUIElement`. Minimizing does not — the window is still there,
+    /// merely out of sight. Asking the element itself is the only test that
+    /// distinguishes the two directly, rather than inferring it from titles,
+    /// sizes or what else the app happens to own.
+    static func isAlive(_ element: AXUIElement) -> Bool {
+        var value: AnyObject?
+        let status = AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &value)
+        switch status {
+        case .success, .noValue, .attributeUnsupported:
+            return true
+        default:
+            return false
+        }
+    }
+
     static func windowID(of element: AXUIElement) -> CGWindowID? {
         var id = CGWindowID(0)
         guard _AXUIElementGetWindow(element, &id) == .success, id != 0 else { return nil }
