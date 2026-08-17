@@ -7,6 +7,9 @@ final class StartMenuPanelController: NSObject, NSWindowDelegate {
     static let shared = StartMenuPanelController()
 
     private var panel: StartMenuPanel?
+    /// The display the Start button that opened this panel lives on.
+    private(set) var anchorScreenUUID: String?
+
     private var outsideClickMonitor: Any?
     private var localMonitor: Any?
 
@@ -27,6 +30,7 @@ final class StartMenuPanelController: NSObject, NSWindowDelegate {
     }
 
     func open(anchorScreen: NSScreen?) {
+        anchorScreenUUID = (anchorScreen ?? NSScreen.main).flatMap { ScreenIdentity(screen: $0)?.uuid }
         AppCatalog.shared.loadIfNeeded()
         DockPinnedApps.shared.reload()
 

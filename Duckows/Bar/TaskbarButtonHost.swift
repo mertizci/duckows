@@ -33,12 +33,33 @@ struct TaskbarButtonHost: NSViewRepresentable {
                 if let record = records.first, records.count == 1 {
                     WindowActions.toggle(record, isFrontmost: isFrontmost)
                 } else if records.isEmpty {
-                    // The degraded, no-Accessibility bar has no window records.
-                    NSRunningApplication(processIdentifier: item.pid)?.activate()
+                    Self.reopen(pid: item.pid)
                 } else if isFrontmost {
                     WindowActions.hide(pid: item.pid)
                 } else {
                     records.forEach(WindowActions.raise)
+                }
+            }
+        }
+
+        /// Brings back an app that is running with nothing open.
+        ///
+        /// `activate()` only moves focus to an app that has no windows, which
+        /// looks like nothing happened. Asking LaunchServices to open it again
+        /// sends the reopen event — the same one a Dock tile click sends, and
+        /// the thing that actually makes an app put a window back on screen.
+        @MainActor
+        static func reopen(pid: pid_t) {
+            guard let app = NSRunningApplication(processIdentifier: pid) else { return }
+            guard let url = app.bundleURL else {
+                app.activate()
+                return
+            }
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, error in
+                if let error {
+                    NSLog("Duckows: could not reopen \(app.localizedName ?? "app") – \(error.localizedDescription)")
                 }
             }
         }

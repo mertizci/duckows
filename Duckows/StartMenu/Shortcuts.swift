@@ -36,8 +36,9 @@ enum PlaceShortcut: String, CaseIterable, Identifiable {
         }
     }
 
-    func open() {
-        Self.openInFinder(url)
+    @MainActor
+    func open(onScreen uuid: String?) {
+        Self.openInFinder(url, onScreen: uuid)
     }
 
     /// Hands the folder to Finder rather than opening it ourselves.
@@ -48,12 +49,19 @@ enum PlaceShortcut: String, CaseIterable, Identifiable {
     /// offers no way to ask for them together. Naming Finder as the opening
     /// application makes Finder the accessor, and Finder already has the
     /// access.
-    private static func openInFinder(_ url: URL) {
+    @MainActor
+    private static func openInFinder(_ url: URL, onScreen uuid: String?) {
         let finder = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
 
         NSWorkspace.shared.open([url], withApplicationAt: finder, configuration: configuration) { _, error in
+            if error == nil {
+                Task { @MainActor in
+                    WindowPlacement.follow(bundleIdentifier: "com.apple.finder", pid: nil, onScreen: uuid ?? "")
+                }
+                return
+            }
             guard let error else { return }
             NSLog("Duckows: Finder could not open \(url.lastPathComponent) – \(error.localizedDescription)")
             DispatchQueue.main.async {
@@ -115,13 +123,18 @@ enum SystemSettingsPane: String, CaseIterable, Identifiable {
 
     static let startMenuItems: [SystemSettingsPane] = [.settings, .displays, .sound, .bluetooth, .network]
 
-    func open() {
+    @MainActor
+    func open(onScreen uuid: String?) {
+        let settings = "com.apple.systempreferences"
         guard let paneIdentifier else {
-            // No anchor: just open System Settings itself.
-            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app"))
+            WindowPlacement.open(
+                URL(fileURLWithPath: "/System/Applications/System Settings.app"),
+                bundleIdentifier: settings,
+                onScreen: uuid
+            )
             return
         }
         guard let url = URL(string: "x-apple.systempreferences:\(paneIdentifier)") else { return }
-        NSWorkspace.shared.open(url)
+        WindowPlacement.openURL(url, expecting: settings, onScreen: uuid)
     }
 }

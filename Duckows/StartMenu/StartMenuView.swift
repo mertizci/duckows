@@ -142,7 +142,7 @@ struct StartMenuView: View {
 
             ForEach(PlaceShortcut.allCases) { place in
                 ShortcutRow(title: place.displayName, symbol: place.symbolName) {
-                    place.open()
+                    place.open(onScreen: StartMenuPanelController.shared.anchorScreenUUID)
                     StartMenuPanelController.shared.close()
                 }
             }
@@ -151,7 +151,7 @@ struct StartMenuView: View {
 
             ForEach(SystemSettingsPane.startMenuItems) { pane in
                 ShortcutRow(title: pane.displayName, symbol: pane.symbolName) {
-                    pane.open()
+                    pane.open(onScreen: StartMenuPanelController.shared.anchorScreenUUID)
                     StartMenuPanelController.shared.close()
                 }
             }
@@ -224,11 +224,11 @@ struct StartMenuView: View {
     }
 
     private func launch(_ app: InstalledApp) {
-        NSWorkspace.shared.openApplication(at: app.url, configuration: NSWorkspace.OpenConfiguration()) { _, error in
-            if let error {
-                NSLog("Duckows: could not open \(app.name) – \(error.localizedDescription)")
-            }
-        }
+        WindowPlacement.open(
+            app.url,
+            bundleIdentifier: app.id,
+            onScreen: StartMenuPanelController.shared.anchorScreenUUID
+        )
         StartMenuPanelController.shared.close()
     }
 }
