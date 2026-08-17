@@ -15,7 +15,12 @@ struct UpdaterView: View {
     @ViewBuilder
     private var content: some View {
         switch controller.state {
-        case .idle, .checking:
+        case .idle:
+            // Idle means the window is on its way out. Drawing the spinner here
+            // is how a finished silent check used to leave a permanent
+            // "Checking for updates…" window behind.
+            EmptyView()
+        case .checking:
             checkingView
         case .available(let release):
             availableView(release)

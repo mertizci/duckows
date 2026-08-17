@@ -107,6 +107,10 @@ final class UpdateController: ObservableObject {
     private func finishCheck(silent: Bool, result: UpdateState) {
         if silent {
             state = .idle
+            // A silent check must never leave a window on screen. Something
+            // else may already have opened it — the post-update notice does —
+            // and an idle updater window has nothing to say.
+            UpdaterWindowController.shared.close()
         } else {
             state = result
             UpdaterWindowController.shared.show()
@@ -169,18 +173,24 @@ final class UpdateController: ObservableObject {
 
     /// If the app was just relaunched into the version we updated to, surfaces
     /// the "Updated to vX.Y.Z" popup with release notes, then clears the flag.
-    func consumePostUpdateNoticeIfNeeded() {
-        guard let pending = loadPendingUpdate() else { return }
+    ///
+    /// Returns whether a notice was shown, so the caller can skip the automatic
+    /// launch check: it would overwrite the notice with a spinner, and there is
+    /// self-evidently nothing newer to find right after updating.
+    @discardableResult
+    func consumePostUpdateNoticeIfNeeded() -> Bool {
+        guard let pending = loadPendingUpdate() else { return false }
         clearPendingUpdate()
 
         guard let pendingVersion = SemanticVersion(pending.version),
               let current = SemanticVersion(currentVersion),
               current >= pendingVersion else {
-            return
+            return false
         }
 
         state = .justUpdated(version: pending.version, notes: pending.notes)
         UpdaterWindowController.shared.show()
+        return true
     }
 
     // MARK: - Persistence

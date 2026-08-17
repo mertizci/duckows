@@ -6,8 +6,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             TaskbarPresenter.shared.start()
 
-            UpdateController.shared.consumePostUpdateNoticeIfNeeded()
-            if SettingsStore.shared.settings.general.checksForUpdatesAutomatically {
+            // Order matters: the notice has to win. Running the launch check
+            // as well would replace "Updated to 0.2.0" with a spinner before
+            // the user had a chance to read it.
+            let showedUpdateNotice = UpdateController.shared.consumePostUpdateNoticeIfNeeded()
+            if !showedUpdateNotice,
+               SettingsStore.shared.settings.general.checksForUpdatesAutomatically {
                 UpdateController.shared.checkForUpdatesOnLaunch()
             }
         }
