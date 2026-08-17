@@ -37,7 +37,30 @@ enum PlaceShortcut: String, CaseIterable, Identifiable {
     }
 
     func open() {
-        NSWorkspace.shared.open(url)
+        Self.openInFinder(url)
+    }
+
+    /// Hands the folder to Finder rather than opening it ourselves.
+    ///
+    /// `NSWorkspace.open(url)` makes Duckows the process accessing the folder,
+    /// so macOS asks for permission to Downloads, then Documents, then Desktop
+    /// — one prompt per protected folder, because TCC gates them separately and
+    /// offers no way to ask for them together. Naming Finder as the opening
+    /// application makes Finder the accessor, and Finder already has the
+    /// access.
+    private static func openInFinder(_ url: URL) {
+        let finder = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+
+        NSWorkspace.shared.open([url], withApplicationAt: finder, configuration: configuration) { _, error in
+            guard let error else { return }
+            NSLog("Duckows: Finder could not open \(url.lastPathComponent) – \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                // Last resort; this is the path that prompts.
+                NSWorkspace.shared.open(url)
+            }
+        }
     }
 }
 
