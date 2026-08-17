@@ -97,9 +97,6 @@ final class WindowRegistry: ObservableObject {
                 NSLog("Duckows: slow window sweep – %.0f ms for %d windows",
                       elapsed * 1000, records.count)
             }
-            #if DEBUG
-            NSLog("Duckows: sweep %.0f ms, %d windows", elapsed * 1000, records.count)
-            #endif
             self.apply(records)
             self.isScanning = false
             if self.needsAnotherPass {
@@ -196,6 +193,17 @@ final class WindowRegistry: ObservableObject {
         guard next != items else { return }
         items = next
     }
+
+    /// The window records behind one button, in the order they were found.
+    func records(for item: TaskbarItem) -> [WindowRecord] {
+        item.windowIDs.compactMap { id in records.first { $0.id == id } }
+    }
+
+    func records(withID id: CGWindowID) -> WindowRecord? {
+        records.first { $0.id == id }
+    }
+
+    var frontmostApplication: pid_t? { frontmostPID }
 
     /// The buttons one bar should show.
     func items(forScreen uuid: String?) -> [TaskbarItem] {

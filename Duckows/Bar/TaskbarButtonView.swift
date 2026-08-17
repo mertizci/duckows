@@ -63,6 +63,7 @@ struct TaskbarButtonView: View {
             }
         }
         .contentShape(Rectangle())
+        .overlay(TaskbarButtonHost(item: item))
         .onHover { isHovered = $0 }
         .help(item.title)
     }

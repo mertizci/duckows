@@ -2,6 +2,8 @@ import SwiftUI
 
 struct AboutSettingsPage: View {
     @ObservedObject private var updater = UpdateController.shared
+    @ObservedObject private var registry = WindowRegistry.shared
+    @ObservedObject private var permissions = PermissionMonitor.shared
 
     private var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
@@ -38,6 +40,28 @@ struct AboutSettingsPage: View {
                     }
                 }
                 .font(.system(size: 11))
+            }
+
+            SettingsCard(
+                title: "Diagnostics",
+                subtitle: "A sweep reads every running app's window list over IPC — the one thing "
+                    + "here that can quietly get slow."
+            ) {
+                SettingsOptionRow(title: "Last window sweep") {
+                    Text(registry.lastScanDuration > 0
+                         ? String(format: "%.0f ms · %d windows",
+                                  registry.lastScanDuration * 1000, registry.items.count)
+                         : "—")
+                        .font(.system(size: 11, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+
+                SettingsOptionRow(title: "Accessibility") {
+                    Text(permissions.isAccessibilityTrusted ? "Granted" : "Not granted")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(permissions.isAccessibilityTrusted ? .green : .orange)
+                }
             }
 
             SettingsCard(title: "Configuration") {
