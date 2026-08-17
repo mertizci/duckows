@@ -21,6 +21,9 @@ final class TrayPopoverController: NSObject {
     private var openWidget: String?
     private var outsideClickMonitor: Any?
     private var escapeMonitor: Any?
+    /// Kept so the panel can be re-anchored when its contents change size.
+    private weak var anchorView: NSView?
+    private var sizeObservation: NSKeyValueObservation?
 
     private override init() { super.init() }
 
@@ -39,26 +42,61 @@ final class TrayPopoverController: NSObject {
     }
 
     private func show(widget: String, anchor: NSView?, content: AnyView) {
-        let padded = AnyView(content.padding(14).fixedSize())
+        anchorView = anchor
 
         if let hosting {
-            hosting.rootView = padded
+            hosting.rootView = Self.chrome(around: content)
         } else {
-            let controller = NSHostingController(rootView: padded)
-            let newPanel = TrayPopoverPanel(contentRect: NSRect(origin: .zero, size: NSSize(width: 1, height: 1)))
+            let controller = NSHostingController(rootView: Self.chrome(around: content))
+            // Without this the panel keeps whatever size it had when it opened.
+            // The volume widget grows after the fact — its device list arrives
+            // from a background read — and the extra rows ended up behind the
+            // bar.
+            controller.sizingOptions = [.preferredContentSize]
+            let newPanel = TrayPopoverPanel(
+                contentRect: NSRect(origin: .zero, size: NSSize(width: 1, height: 1))
+            )
             newPanel.contentViewController = controller
+            sizeObservation = controller.observe(\.preferredContentSize) { _, _ in
+                Task { @MainActor in TrayPopoverController.shared.reanchor() }
+            }
             hosting = controller
             panel = newPanel
         }
 
-        guard let panel, let hosting else { return }
-        // `fittingSize` is only meaningful once the hosting view has laid out
-        // the new root, which it does not do until asked.
-        hosting.view.layoutSubtreeIfNeeded()
-        panel.setFrame(frame(for: hosting.view.fittingSize, anchor: anchor), display: true)
+        guard let panel else { return }
+        reanchor()
         panel.orderFront(nil)
         openWidget = widget
         installMonitors()
+    }
+
+    /// AppKit resizes the panel around its bottom-left corner, which is only
+    /// right for a bar along the bottom; re-deriving the whole frame keeps the
+    /// popover against the widget either way.
+    private func reanchor() {
+        guard let panel, let hosting else { return }
+        hosting.view.layoutSubtreeIfNeeded()
+        let size = hosting.preferredContentSize == .zero
+            ? hosting.view.fittingSize
+            : hosting.preferredContentSize
+        guard size.width > 1, size.height > 1 else { return }
+        panel.setFrame(frame(for: size, anchor: anchorView), display: true)
+    }
+
+    /// The popover's own background. The panel is transparent so the corners
+    /// can be rounded, which means the content has to bring the material with
+    /// it or it floats over the desktop with nothing behind it.
+    private static func chrome(around content: AnyView) -> AnyView {
+        let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
+        return AnyView(
+            content
+                .padding(14)
+                .background {
+                    shape.fill(.regularMaterial)
+                        .overlay { shape.strokeBorder(Color.primary.opacity(0.14)) }
+                }
+        )
     }
 
     /// Centred on the widget, on the far side of the bar from the screen edge,

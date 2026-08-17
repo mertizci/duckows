@@ -13,14 +13,17 @@ struct TrayView: View {
     private var enabled: [TrayWidgetKind] { tray.widgets.filter(\.isEnabled).map(\.kind) }
 
     var body: some View {
-        HStack(spacing: 2) {
+        // No gaps: Windows runs its tray icons together in equal cells and lets
+        // the hover highlight mark the boundary, rather than spacing them out
+        // the way the macOS menu bar does.
+        HStack(spacing: 0) {
             ForEach(tray.widgets.filter(\.isEnabled)) { config in
                 switch config.kind {
                 case .systemLoad: SystemLoadWidget()
                 case .wifi:       WiFiWidget()
                 case .bluetooth:  BluetoothWidget()
                 case .volume:     VolumeWidget()
-                case .battery:    BatteryWidget()
+                case .battery:    BatteryWidget(tray: tray)
                 case .clock:      ClockWidget(tray: tray)
                 }
             }
@@ -53,10 +56,16 @@ struct TrayView: View {
 
 /// Shared chrome: a hover highlight and a popover, so every widget behaves the
 /// same way under the pointer.
+///
+/// Shaped like a Windows notification-area cell rather than a macOS menu bar
+/// extra: a fixed-width, full-height, square-cornered target that lights up as
+/// a block under the pointer.
 struct TrayButton<Label: View, Content: View>: View {
     /// Identifies the widget to the shared popover, so clicking the same one
     /// twice closes it instead of reopening it.
     let widget: TrayWidgetKind
+    /// Icons sit in a uniform narrow cell; the clock is as wide as its text.
+    var isWide = false
     @ViewBuilder var label: Label
     @ViewBuilder var content: Content
 
@@ -70,12 +79,11 @@ struct TrayButton<Label: View, Content: View>: View {
             )
         } label: {
             label
-                .padding(.horizontal, 7)
-                .padding(.vertical, 4)
-                .background {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(Color.primary.opacity(isHovered ? 0.12 : 0))
-                }
+                .frame(minWidth: isWide ? 0 : 28)
+                .padding(.horizontal, isWide ? 10 : 0)
+                .frame(maxHeight: .infinity)
+                .background(Color.primary.opacity(isHovered ? 0.14 : 0))
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         // Behind the button, not over it: the anchor exists only to report
@@ -94,14 +102,13 @@ struct ClockWidget: View {
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        TrayButton(widget: .clock) {
+        TrayButton(widget: .clock, isWide: true) {
             VStack(alignment: .trailing, spacing: 0) {
                 Text(now, format: timeFormat)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11))
                 if tray.showsDate {
-                    Text(now, format: .dateTime.day().month().year())
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
+                    Text(now, format: .dateTime.day(.twoDigits).month(.twoDigits).year())
+                        .font(.system(size: 11))
                 }
             }
             .monospacedDigit()
@@ -180,16 +187,21 @@ private struct CalendarPopover: View {
 // MARK: - Battery
 
 struct BatteryWidget: View {
+    let tray: TraySettings
     @ObservedObject private var monitor = BatteryMonitor.shared
 
     var body: some View {
         Group {
             if let state = monitor.state {
                 TrayButton(widget: .battery) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3) {
                         Image(systemName: symbol(for: state))
-                            .font(.system(size: 12))
-                        Text("\(state.percentage)%").monospacedDigit()
+                            .font(.system(size: 14))
+                        if tray.showsBatteryPercentage {
+                            Text("\(state.percentage)%")
+                                .font(.system(size: 10))
+                                .monospacedDigit()
+                        }
                     }
                 } content: {
                     VStack(alignment: .leading, spacing: 6) {
@@ -237,7 +249,7 @@ struct VolumeWidget: View {
 
     var body: some View {
         TrayButton(widget: .volume) {
-            Image(systemName: symbol).font(.system(size: 12)).frame(width: 15)
+            Image(systemName: symbol).font(.system(size: 14))
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
@@ -302,7 +314,7 @@ struct WiFiWidget: View {
             if monitor.isPresent {
                 TrayButton(widget: .wifi) {
                     Image(systemName: monitor.isPoweredOn ? "wifi" : "wifi.slash")
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .opacity(monitor.bars == nil && monitor.isPoweredOn ? 0.55 : 1)
                 } content: {
                     VStack(alignment: .leading, spacing: 6) {
@@ -345,7 +357,7 @@ struct BluetoothWidget: View {
             if monitor.isAvailable {
                 TrayButton(widget: .bluetooth) {
                     Image(systemName: monitor.isPoweredOn ? "wave.3.right" : "wave.3.right.circle")
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .opacity(monitor.isPoweredOn ? 1 : 0.5)
                 } content: {
                     VStack(alignment: .leading, spacing: 8) {

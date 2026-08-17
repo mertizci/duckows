@@ -79,6 +79,9 @@ struct TraySettings: Codable, Equatable {
     var clockFormat: ClockFormat
     var showsDate: Bool
     var showsSeconds: Bool
+    /// Off by default: the Windows notification area shows the battery as an
+    /// icon alone, and the exact figure is one click away in the popover.
+    var showsBatteryPercentage: Bool
 
     static let `default` = TraySettings(
         widgets: TrayWidgetKind.defaultOrder.map {
@@ -86,7 +89,8 @@ struct TraySettings: Codable, Equatable {
         },
         clockFormat: .system,
         showsDate: true,
-        showsSeconds: false
+        showsSeconds: false,
+        showsBatteryPercentage: false
     )
 
     init(from decoder: Decoder) throws {
@@ -100,12 +104,16 @@ struct TraySettings: Codable, Equatable {
         clockFormat = try c.decodeIfPresent(ClockFormat.self, forKey: .clockFormat) ?? d.clockFormat
         showsDate = try c.decodeIfPresent(Bool.self, forKey: .showsDate) ?? d.showsDate
         showsSeconds = try c.decodeIfPresent(Bool.self, forKey: .showsSeconds) ?? d.showsSeconds
+        showsBatteryPercentage = try c.decodeIfPresent(Bool.self, forKey: .showsBatteryPercentage)
+            ?? d.showsBatteryPercentage
     }
 
-    init(widgets: [TrayWidgetConfig], clockFormat: ClockFormat, showsDate: Bool, showsSeconds: Bool) {
+    init(widgets: [TrayWidgetConfig], clockFormat: ClockFormat, showsDate: Bool,
+         showsSeconds: Bool, showsBatteryPercentage: Bool) {
         self.widgets = widgets
         self.clockFormat = clockFormat
         self.showsDate = showsDate
         self.showsSeconds = showsSeconds
+        self.showsBatteryPercentage = showsBatteryPercentage
     }
 }

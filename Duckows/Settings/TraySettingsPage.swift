@@ -68,6 +68,14 @@ struct TraySettingsPage: View {
                     isOn: boolBinding(\.showsSeconds)
                 )
             }
+
+            SettingsCard(title: "Battery") {
+                SettingsToggleRow(
+                    title: "Show the percentage",
+                    subtitle: "Off shows the icon alone, the way Windows does.",
+                    isOn: boolBinding(\.showsBatteryPercentage)
+                )
+            }
         }
         .onAppear { draft = store.settings.tray }
         .onChange(of: store.settings.tray) { _, new in draft = new }
