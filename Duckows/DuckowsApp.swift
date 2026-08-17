@@ -4,7 +4,24 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
+            PermissionMonitor.shared.refresh()
             TaskbarPresenter.shared.start()
+
+            // Started regardless of the Accessibility grant: without it the
+            // registry falls back to a per-app bar, and the workspace events
+            // are what notice the grant arriving.
+            WindowRegistry.shared.start()
+            WorkspaceEvents.shared.start()
+            PermissionsOnboardingWindowController.shared.showIfNeeded()
+
+            NotificationCenter.default.addObserver(
+                forName: .duckowsAccessibilityChanged, object: nil, queue: .main
+            ) { _ in
+                MainActor.assumeIsolated {
+                    AXAppObserverCenter.shared.observeAllRunningApps()
+                    WindowRegistry.shared.setNeedsRescan(.structural)
+                }
+            }
 
             // Order matters: the notice has to win. Running the launch check
             // as well would replace "Updated to 0.2.0" with a spinner before

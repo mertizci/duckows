@@ -9,8 +9,11 @@ import SwiftUI
 struct TaskbarChrome: View {
     let appearance: AppearanceSettings
     let taskbar: TaskbarSettings
-    /// Placeholder buttons for the preview. The real bar passes an empty array
-    /// until window tracking lands.
+    /// Real window buttons. The settings preview leaves this empty and passes
+    /// `sampleItems` instead.
+    var items: [TaskbarItem] = []
+    var needsAccessibility = false
+    /// Stand-ins used only by the settings preview.
     var sampleItems: [SampleItem] = []
     var showsClock = true
 
@@ -29,11 +32,23 @@ struct TaskbarChrome: View {
                 Divider().frame(height: taskbar.iconSize * 0.8).opacity(0.4)
             }
 
-            HStack(spacing: 6) {
-                ForEach(sampleItems) { item in
-                    SampleButton(item: item, taskbar: taskbar)
+            if needsAccessibility {
+                GrantAccessChip()
+            }
+
+            // The strip scrolls rather than squeezing: a button whose title has
+            // been compressed to nothing is no more useful than no button.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(sampleItems) { item in
+                        SampleButton(item: item, taskbar: taskbar)
+                    }
+                    ForEach(items) { item in
+                        TaskbarButtonView(item: item, taskbar: taskbar)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
 

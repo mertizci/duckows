@@ -21,7 +21,8 @@ final class TaskbarWindowController: NSObject, NSWindowDelegate {
     func show() {
         if panel == nil {
             let hosting = NSHostingController(
-                rootView: TaskbarView().environmentObject(SettingsStore.shared)
+                rootView: TaskbarView(screenUUID: screenIdentity?.uuid)
+                    .environmentObject(SettingsStore.shared)
             )
             hosting.view.frame = revealedFrame
 
