@@ -10,7 +10,7 @@ final class StartMenuPanelController: NSObject, NSWindowDelegate {
     private var outsideClickMonitor: Any?
     private var localMonitor: Any?
 
-    private static let size = NSSize(width: 620, height: 560)
+    private static let size = NSSize(width: 460, height: 540)
 
     private override init() {
         super.init()

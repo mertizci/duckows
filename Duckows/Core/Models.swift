@@ -70,6 +70,22 @@ enum AppIconProvider {
         return resized(icon, to: size)
     }
 
+    /// Icons for apps that are not running, keyed by path and size.
+    ///
+    /// `icon(forFile:)` goes out to Launch Services, which is far too slow for
+    /// a SwiftUI `body` — a grid of a hundred apps re-resolving its icons on
+    /// every keystroke is exactly how the Start menu first turned to treacle.
+    private static var fileCache: [String: NSImage] = [:]
+
+    static func icon(forFile url: URL, size: CGFloat) -> NSImage {
+        let key = "\(url.path)@\(Int(size))"
+        if let cached = fileCache[key] { return cached }
+        let icon = NSWorkspace.shared.icon(forFile: url.path)
+        let sized = resized(icon, to: size)
+        fileCache[key] = sized
+        return sized
+    }
+
     private static func resized(_ image: NSImage, to size: CGFloat) -> NSImage {
         let copy = image.copy() as! NSImage
         copy.size = NSSize(width: size, height: size)
