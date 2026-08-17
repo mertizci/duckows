@@ -46,7 +46,7 @@ struct TaskbarChrome: View {
                         SampleButton(item: item, taskbar: taskbar)
                     }
                     ForEach(items) { item in
-                        TaskbarButtonView(item: item, taskbar: taskbar)
+                        TaskbarButtonView(item: item, taskbar: taskbar, screenUUID: screenUUID)
                     }
                 }
             }

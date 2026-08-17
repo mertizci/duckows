@@ -10,19 +10,25 @@ import SwiftUI
 /// click here is meant to activate the *target* app.
 struct TaskbarButtonHost: NSViewRepresentable {
     let item: TaskbarItem
+    /// The display this button's bar lives on, so a reopened app lands
+    /// where it was asked from rather than where it happened to be last.
+    let screenUUID: String?
 
     func makeNSView(context: Context) -> ClickCatcher {
         let view = ClickCatcher()
         view.item = item
+        view.screenUUID = screenUUID
         return view
     }
 
     func updateNSView(_ view: ClickCatcher, context: Context) {
         view.item = item
+        view.screenUUID = screenUUID
     }
 
     final class ClickCatcher: NSView {
         var item: TaskbarItem?
+        var screenUUID: String?
 
         override func mouseDown(with event: NSEvent) {
             guard let item else { return }
@@ -33,7 +39,7 @@ struct TaskbarButtonHost: NSViewRepresentable {
                 if let record = records.first, records.count == 1 {
                     WindowActions.toggle(record, isFrontmost: isFrontmost)
                 } else if records.isEmpty {
-                    Self.reopen(pid: item.pid)
+                    Self.reopen(pid: item.pid, onScreen: self.screenUUID)
                 } else if isFrontmost {
                     WindowActions.hide(pid: item.pid)
                 } else {
@@ -49,7 +55,7 @@ struct TaskbarButtonHost: NSViewRepresentable {
         /// sends the reopen event — the same one a Dock tile click sends, and
         /// the thing that actually makes an app put a window back on screen.
         @MainActor
-        static func reopen(pid: pid_t) {
+        static func reopen(pid: pid_t, onScreen uuid: String?) {
             guard let app = NSRunningApplication(processIdentifier: pid) else { return }
             guard let url = app.bundleURL else {
                 app.activate()
@@ -60,6 +66,11 @@ struct TaskbarButtonHost: NSViewRepresentable {
             NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, error in
                 if let error {
                     NSLog("Duckows: could not reopen \(app.localizedName ?? "app") – \(error.localizedDescription)")
+                    return
+                }
+                guard let uuid else { return }
+                Task { @MainActor in
+                    WindowPlacement.follow(bundleIdentifier: nil, pid: pid, onScreen: uuid)
                 }
             }
         }

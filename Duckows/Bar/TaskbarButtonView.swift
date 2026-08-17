@@ -6,6 +6,7 @@ import SwiftUI
 struct TaskbarButtonView: View {
     let item: TaskbarItem
     let taskbar: TaskbarSettings
+    let screenUUID: String?
 
     @State private var isHovered = false
 
@@ -73,7 +74,7 @@ struct TaskbarButtonView: View {
             }
         }
         .contentShape(Rectangle())
-        .overlay(TaskbarButtonHost(item: item))
+        .overlay(TaskbarButtonHost(item: item, screenUUID: screenUUID))
         .onHover { isHovered = $0 }
         .help(item.title)
     }
