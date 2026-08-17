@@ -95,6 +95,10 @@ final class SettingsStore: ObservableObject {
         updateSettings { $0.taskbar.windowDistribution = mode }
     }
 
+    func setClosedAppsPlacement(_ placement: ClosedAppsPlacement) {
+        updateSettings { $0.taskbar.closedAppsPlacement = placement }
+    }
+
     func setShowsWindowTitles(_ shows: Bool) {
         updateSettings { $0.taskbar.showsWindowTitles = shows }
     }

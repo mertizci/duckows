@@ -288,9 +288,15 @@ final class WindowRegistry: ObservableObject {
     /// the way the desk is laid out rather than in whatever order the windows
     /// were found.
     func itemGroups(forScreen uuid: String?) -> [[TaskbarItem]] {
-        let distribution = SettingsStore.shared.settings.taskbar.windowDistribution
+        let taskbar = SettingsStore.shared.settings.taskbar
+        let distribution = taskbar.windowDistribution
         let windowItems = items.filter(\.hasWindows)
-        let idle = items.filter { !$0.hasWindows }
+
+        // Apps with nothing open are a standing list rather than a reflection
+        // of what is on this display, so repeating them on every bar is mostly
+        // noise. They collect on the main display unless asked otherwise.
+        let showsIdle = taskbar.closedAppsPlacement == .everyDisplay || isPrimary(uuid)
+        let idle = showsIdle ? items.filter { !$0.hasWindows } : []
 
         switch distribution {
         case .perDisplay:
@@ -303,19 +309,29 @@ final class WindowRegistry: ObservableObject {
             // bar's contents around as you click between displays. The primary
             // display — the one at the origin, with the menu bar — is what
             // "main display" means in System Settings, and it is the first.
-            let primary = NSScreen.screens.first.flatMap { ScreenIdentity(screen: $0)?.uuid }
-            guard uuid == primary else {
+            guard isPrimary(uuid) else {
                 // The other displays keep showing their own windows; only the
                 // main one gets the full picture.
                 guard let uuid else { return [] }
                 let mine = windowItems.filter { $0.screenUUID == nil || $0.screenUUID == uuid }
-                return [mine].filter { !$0.isEmpty }
+                return [mine, idle].filter { !$0.isEmpty }
             }
             return combinedGroups(windowItems, idle: idle)
 
         case .allOnEveryDisplay:
             return combinedGroups(windowItems, idle: idle)
         }
+    }
+
+    /// The display at the origin, with the menu bar — what System Settings
+    /// calls the main display.
+    ///
+    /// Deliberately not `NSScreen.main`, which follows the keyboard and would
+    /// move a bar's contents from one screen to another as you clicked between
+    /// them.
+    private func isPrimary(_ uuid: String?) -> Bool {
+        guard let uuid else { return false }
+        return NSScreen.screens.first.flatMap { ScreenIdentity(screen: $0)?.uuid } == uuid
     }
 
     private func combinedGroups(_ windowItems: [TaskbarItem], idle: [TaskbarItem]) -> [[TaskbarItem]] {

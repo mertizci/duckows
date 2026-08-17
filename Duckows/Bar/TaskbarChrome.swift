@@ -31,7 +31,7 @@ struct TaskbarChrome: View {
             StartButton(iconSize: taskbar.iconSize, screenUUID: screenUUID)
 
             if appearance.showsSeparator {
-                Divider().frame(height: taskbar.iconSize * 0.8).opacity(0.4)
+                BarSeparator(height: taskbar.iconSize * 0.9)
             }
 
             if needsAccessibility {
@@ -56,6 +56,13 @@ struct TaskbarChrome: View {
 }
 
 extension TaskbarChrome {
+    /// The first group with anything in it, so separators only ever land
+    /// between sections.
+    fileprivate func firstShownGroupIndex(visible: [TaskbarItem]) -> Int {
+        let ids = Set(visible.map(\.id))
+        return itemGroups.firstIndex { group in group.contains { ids.contains($0.id) } } ?? 0
+    }
+
     /// All the buttons, sized to whatever room is left.
     @ViewBuilder
     fileprivate func strip(available: CGFloat) -> some View {
@@ -79,12 +86,12 @@ extension TaskbarChrome {
             ForEach(Array(itemGroups.enumerated()), id: \.offset) { index, group in
                 let shown = group.filter { item in visible.contains(where: { $0.id == item.id }) }
                 if !shown.isEmpty {
-                    if index > 0 {
-                        // Marks where one display's windows end and the next
-                        // display's begin.
-                        Divider()
-                            .frame(height: taskbar.iconSize * 0.8)
-                            .opacity(0.45)
+                    // Marks where one display's windows end and the next
+                    // display's begin. Keyed on whether anything has been drawn
+                    // yet rather than the group index, so an empty leading
+                    // group does not produce a stray rule at the far left.
+                    if index > firstShownGroupIndex(visible: visible) {
+                        BarSeparator(height: taskbar.iconSize * 0.9)
                     }
                     ForEach(shown) { item in
                         TaskbarButtonView(
@@ -102,6 +109,22 @@ extension TaskbarChrome {
                 OverflowButton(items: overflow, height: taskbar.iconSize * 1.25)
             }
         }
+    }
+}
+
+/// A visible rule between sections.
+///
+/// `Divider()` draws with the system separator colour, which over a
+/// translucent bar is invisible — the group boundaries were being drawn all
+/// along and simply could not be seen.
+private struct BarSeparator: View {
+    let height: CGFloat
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1, style: .continuous)
+            .fill(Color.primary.opacity(0.30))
+            .frame(width: 2, height: height)
+            .padding(.horizontal, 3)
     }
 }
 

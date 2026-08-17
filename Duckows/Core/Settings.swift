@@ -72,6 +72,21 @@ enum WindowDistribution: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Where the buttons for apps with nothing open are shown.
+enum ClosedAppsPlacement: String, Codable, CaseIterable, Identifiable {
+    case mainDisplay
+    case everyDisplay
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .mainDisplay:  return "Main display only"
+        case .everyDisplay: return "Every display"
+        }
+    }
+}
+
 /// One taskbar button per window, or one per application.
 enum GroupingMode: String, Codable, CaseIterable, Identifiable {
     case perWindow
@@ -136,6 +151,7 @@ struct TaskbarSettings: Codable, Equatable {
     var edge: BarEdge
     var grouping: GroupingMode
     var windowDistribution: WindowDistribution
+    var closedAppsPlacement: ClosedAppsPlacement
     var showsWindowTitles: Bool
     var iconSize: Double
     var maxButtonWidth: Double
@@ -149,6 +165,7 @@ struct TaskbarSettings: Codable, Equatable {
         edge: .bottom,
         grouping: .perWindow,
         windowDistribution: .perDisplay,
+        closedAppsPlacement: .mainDisplay,
         showsWindowTitles: true,
         iconSize: 24,
         maxButtonWidth: 180,
@@ -164,6 +181,8 @@ struct TaskbarSettings: Codable, Equatable {
         grouping = try c.decodeIfPresent(GroupingMode.self, forKey: .grouping) ?? d.grouping
         windowDistribution = try c.decodeIfPresent(WindowDistribution.self, forKey: .windowDistribution)
             ?? d.windowDistribution
+        closedAppsPlacement = try c.decodeIfPresent(ClosedAppsPlacement.self, forKey: .closedAppsPlacement)
+            ?? d.closedAppsPlacement
         showsWindowTitles = try c.decodeIfPresent(Bool.self, forKey: .showsWindowTitles) ?? d.showsWindowTitles
         iconSize = try c.decodeIfPresent(Double.self, forKey: .iconSize) ?? d.iconSize
         maxButtonWidth = try c.decodeIfPresent(Double.self, forKey: .maxButtonWidth) ?? d.maxButtonWidth
@@ -173,11 +192,13 @@ struct TaskbarSettings: Codable, Equatable {
     }
 
     init(edge: BarEdge, grouping: GroupingMode, windowDistribution: WindowDistribution,
+         closedAppsPlacement: ClosedAppsPlacement,
          showsWindowTitles: Bool, iconSize: Double,
          maxButtonWidth: Double, autoHide: Bool, showsOnAllDisplays: Bool, disabledDisplayUUIDs: [String]) {
         self.edge = edge
         self.grouping = grouping
         self.windowDistribution = windowDistribution
+        self.closedAppsPlacement = closedAppsPlacement
         self.showsWindowTitles = showsWindowTitles
         self.iconSize = iconSize
         self.maxButtonWidth = maxButtonWidth

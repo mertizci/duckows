@@ -79,6 +79,16 @@ struct TaskbarSettingsPage: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
+                SettingsOptionRow(title: "Apps with nothing open") {
+                    Picker("", selection: closedAppsBinding) {
+                        ForEach(ClosedAppsPlacement.allCases) { placement in
+                            Text(placement.displayName).tag(placement)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
+                }
+
                 Divider()
 
                 SettingsToggleRow(
@@ -113,6 +123,13 @@ struct TaskbarSettingsPage: View {
         Binding(
             get: { draft.windowDistribution },
             set: { draft.windowDistribution = $0; store.setWindowDistribution($0) }
+        )
+    }
+
+    private var closedAppsBinding: Binding<ClosedAppsPlacement> {
+        Binding(
+            get: { draft.closedAppsPlacement },
+            set: { draft.closedAppsPlacement = $0; store.setClosedAppsPlacement($0) }
         )
     }
 
