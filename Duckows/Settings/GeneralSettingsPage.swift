@@ -3,6 +3,7 @@ import SwiftUI
 struct GeneralSettingsPage: View {
     @EnvironmentObject private var store: SettingsStore
     @ObservedObject private var launch = LaunchAtLoginController.shared
+    @ObservedObject private var permissions = PermissionMonitor.shared
 
     var body: some View {
         SettingsDetailScaffold(section: .general) {
@@ -53,33 +54,24 @@ struct GeneralSettingsPage: View {
                 }
             }
 
-            SettingsCard(
-                title: "Window space",
-                subtitle: "Whether maximized windows are allowed to slide underneath the bar."
-            ) {
-                SettingsOptionRow(title: "Reserve space") {
-                    Picker("", selection: Binding(
-                        get: { store.settings.general.spaceReservation },
-                        set: { store.setSpaceReservation($0) }
-                    )) {
-                        ForEach(SpaceReservationMode.allCases) { mode in
-                            Text(mode.displayName).tag(mode)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 260)
-                }
-
-                Text(store.settings.general.spaceReservation.explanation)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                StatusBanner(
-                    style: .info,
-                    message: "Not wired up yet — the bar currently floats above your windows. "
-                        + "This setting takes effect in a later release."
+            SettingsCard(title: "Desktop") {
+                SettingsToggleRow(
+                    title: "Hide the macOS Dock",
+                    subtitle: "Restored exactly as you had it when Duckows quits.",
+                    isOn: Binding(
+                        get: { store.settings.general.hidesSystemDock },
+                        set: { store.setHidesSystemDock($0) }
+                    ),
+                    isEnabled: DockController.shared.isAvailable
                 )
+
+                if !DockController.shared.isAvailable {
+                    StatusBanner(
+                        style: .warning,
+                        message: "This version of macOS does not expose the Dock's auto-hide switch, "
+                            + "so Duckows cannot hide it for you."
+                    )
+                }
             }
         }
         .onAppear { launch.refresh() }

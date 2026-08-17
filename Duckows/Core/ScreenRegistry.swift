@@ -9,6 +9,10 @@ import Combine
 struct ScreenIdentity: Hashable, Codable {
     let uuid: String
 
+    init(uuid: String) {
+        self.uuid = uuid
+    }
+
     init?(screen: NSScreen) {
         guard let number = screen.deviceDescription[.init("NSScreenNumber")] as? NSNumber else {
             return nil

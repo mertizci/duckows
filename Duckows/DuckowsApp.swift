@@ -5,7 +5,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             PermissionMonitor.shared.refresh()
+            // Before anything else touches the Dock: repair a previous run
+            // that died with it hidden.
+            DockController.shared.recoverFromCrashIfNeeded()
             TaskbarPresenter.shared.start()
+            DockController.shared.apply()
 
             // Started regardless of the Accessibility grant: without it the
             // registry falls back to a per-app bar, and the workspace events
@@ -49,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // start. Settings are flushed synchronously because the debounced write
         // may not have landed yet.
         MainActor.assumeIsolated {
+            DockController.shared.restore()
             SettingsStore.shared.saveNow()
         }
     }

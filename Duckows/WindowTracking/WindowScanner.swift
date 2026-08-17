@@ -49,7 +49,9 @@ final class WindowScanner {
         kAXSubroleAttribute as String,
         kAXMinimizedAttribute as String,
         kAXPositionAttribute as String,
-        kAXSizeAttribute as String
+        kAXSizeAttribute as String,
+        // Not exposed as a kAX… constant; this is the literal attribute name.
+        "AXFullScreen"
     ]
 
     func scan(context: ScanContext, completion: @escaping @MainActor ([WindowRecord]) -> Void) {
@@ -117,6 +119,7 @@ final class WindowScanner {
               subrole == (kAXStandardWindowSubrole as String) else { return nil }
 
         let isMinimized = values[kAXMinimizedAttribute as String] as? Bool ?? false
+        let isFullscreen = values["AXFullScreen"] as? Bool ?? false
 
         // AX happily reports windows the window server no longer shows. A
         // minimized window is legitimately absent from the on-screen list, so
@@ -143,6 +146,7 @@ final class WindowScanner {
             appName: app.localizedName ?? "",
             bundleIdentifier: app.bundleIdentifier,
             isMinimized: isMinimized,
+            isFullscreen: isFullscreen,
             frame: frame,
             screenUUID: frame.isEmpty ? nil : context.screenUUID(for: frame)
         )

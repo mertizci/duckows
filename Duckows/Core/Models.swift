@@ -14,6 +14,8 @@ struct WindowRecord: Identifiable, Equatable {
     var appName: String
     var bundleIdentifier: String?
     var isMinimized: Bool
+    /// True macOS full screen (the green button), not merely zoomed.
+    var isFullscreen: Bool
     var frame: CGRect
     /// Sticky: a minimized window reports a garbage position, so the last known
     /// display is kept rather than letting it jump to another screen's bar.
@@ -26,6 +28,7 @@ struct WindowRecord: Identifiable, Equatable {
             && lhs.pid == rhs.pid
             && lhs.title == rhs.title
             && lhs.isMinimized == rhs.isMinimized
+            && lhs.isFullscreen == rhs.isFullscreen
             && lhs.frame == rhs.frame
             && lhs.screenUUID == rhs.screenUUID
     }

@@ -36,11 +36,30 @@ final class TaskbarPresenter: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.synchronize(with: ScreenRegistry.shared.screens)
+                DockController.shared.apply()
             }
+            .store(in: &cancellables)
+
+        // A full-screen window covers its whole display and cannot be resized
+        // out of the bar's way, so the bar is what moves.
+        WindowRegistry.shared.$fullscreenScreenUUIDs
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] uuids in self?.applyFullscreen(uuids) }
             .store(in: &cancellables)
 
         synchronize(with: ScreenRegistry.shared.screens)
         AutoHideMonitor.shared.start()
+    }
+
+    private func applyFullscreen(_ uuids: Set<String>) {
+        for (identity, controller) in controllers {
+            if uuids.contains(identity.uuid) {
+                controller.hide()
+            } else {
+                controller.show()
+            }
+        }
     }
 
     func stop() {

@@ -95,8 +95,8 @@ final class SettingsStore: ObservableObject {
         updateSettings { $0.taskbar.showsWindowTitles = shows }
     }
 
-    func setSpaceReservation(_ mode: SpaceReservationMode) {
-        updateSettings { $0.general.spaceReservation = mode }
+    func setHidesSystemDock(_ enabled: Bool) {
+        updateSettings { $0.general.hidesSystemDock = enabled }
     }
 
     func setChecksForUpdatesAutomatically(_ enabled: Bool) {

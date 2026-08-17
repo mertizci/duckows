@@ -54,43 +54,6 @@ enum GroupingMode: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-/// How Duckows keeps maximized windows from sliding underneath the bar.
-///
-/// macOS exposes no public API for reserving screen space, so neither of the
-/// working strategies is free: `.dockProxy` re-purposes the real Dock's own
-/// reservation (exact, but only on the display the Dock lives on), and
-/// `.accessibilityClamp` corrects offending window frames after the fact.
-enum SpaceReservationMode: String, Codable, CaseIterable, Identifiable {
-    case automatic
-    case dockProxy
-    case accessibilityClamp
-    case off
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .automatic: return "Automatic"
-        case .dockProxy: return "Use the Dock's reserved space"
-        case .accessibilityClamp: return "Resize windows that overlap"
-        case .off: return "Off — let windows go under the bar"
-        }
-    }
-
-    var explanation: String {
-        switch self {
-        case .automatic:
-            return "Reserves space exactly on the display holding the Dock, and resizes overlapping windows on the others."
-        case .dockProxy:
-            return "Exact, flicker-free, and every app cooperates — but only on the display the Dock lives on."
-        case .accessibilityClamp:
-            return "Works on every display, but a maximized window may flash once before it snaps back."
-        case .off:
-            return "Duckows never touches your windows. The bar simply floats above them."
-        }
-    }
-}
-
 struct AppearanceSettings: Codable, Equatable {
     var style: BarStyle
     var tintHex: String?
@@ -187,14 +150,15 @@ struct TaskbarSettings: Codable, Equatable {
 
 struct GeneralSettings: Codable, Equatable {
     var checksForUpdatesAutomatically: Bool
-    var spaceReservation: SpaceReservationMode
+    /// Hide the macOS Dock while Duckows is running; restored on quit.
+    var hidesSystemDock: Bool
 
     /// Launch-at-login is deliberately absent. `SMAppService` is the single
     /// source of truth; mirroring it here would let this file drift from
     /// reality the moment the user flips the switch in System Settings.
     static let `default` = GeneralSettings(
         checksForUpdatesAutomatically: true,
-        spaceReservation: .automatic
+        hidesSystemDock: true
     )
 
     init(from decoder: Decoder) throws {
@@ -202,27 +166,23 @@ struct GeneralSettings: Codable, Equatable {
         let d = Self.default
         checksForUpdatesAutomatically = try c.decodeIfPresent(Bool.self, forKey: .checksForUpdatesAutomatically)
             ?? d.checksForUpdatesAutomatically
-        spaceReservation = try c.decodeIfPresent(SpaceReservationMode.self, forKey: .spaceReservation)
-            ?? d.spaceReservation
+        hidesSystemDock = try c.decodeIfPresent(Bool.self, forKey: .hidesSystemDock) ?? d.hidesSystemDock
     }
 
-    init(checksForUpdatesAutomatically: Bool, spaceReservation: SpaceReservationMode) {
+    init(checksForUpdatesAutomatically: Bool, hidesSystemDock: Bool) {
         self.checksForUpdatesAutomatically = checksForUpdatesAutomatically
-        self.spaceReservation = spaceReservation
+        self.hidesSystemDock = hidesSystemDock
     }
 }
 
-/// The Dock settings Duckows overwrote, so they can be put back exactly.
+/// The Dock setting Duckows overwrote, so it can be put back exactly.
 ///
 /// `isDirty` stays true from the first mutation until a clean restore finishes.
 /// Finding it still set at launch means the previous run died without
-/// restoring, and the recorded values are the ones to trust.
+/// restoring, and the recorded value is the one to trust — never the Dock's
+/// current state, which is whatever Duckows left behind.
 struct DockRestoreState: Codable, Equatable {
     var autoHide: Bool
-    var tileSize: Float
-    var magnification: Bool
-    var orientation: Int
-    var pinning: Int
     var isDirty: Bool
 }
 

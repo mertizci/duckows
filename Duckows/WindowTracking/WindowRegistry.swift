@@ -12,6 +12,11 @@ final class WindowRegistry: ObservableObject {
 
     @Published private(set) var items: [TaskbarItem] = []
     @Published private(set) var lastScanDuration: TimeInterval = 0
+    /// Displays currently showing a true full-screen window.
+    ///
+    /// A full-screen window owns its whole display and cannot be shortened, so
+    /// the only way to keep the bar off it is for the bar to step aside.
+    @Published private(set) var fullscreenScreenUUIDs: Set<String> = []
 
     private let scanner = WindowScanner()
     private var records: [WindowRecord] = []
@@ -84,7 +89,17 @@ final class WindowRegistry: ObservableObject {
         let context = ScanContext.current()
         scanner.scan(context: context) { [weak self] records in
             guard let self else { return }
-            self.lastScanDuration = Date().timeIntervalSince(started)
+            let elapsed = Date().timeIntervalSince(started)
+            self.lastScanDuration = elapsed
+            // A sweep is synchronous IPC into every running app, so it is the
+            // one thing here that can quietly get slow as the machine fills up.
+            if elapsed > 0.25 {
+                NSLog("Duckows: slow window sweep – %.0f ms for %d windows",
+                      elapsed * 1000, records.count)
+            }
+            #if DEBUG
+            NSLog("Duckows: sweep %.0f ms, %d windows", elapsed * 1000, records.count)
+            #endif
             self.apply(records)
             self.isScanning = false
             if self.needsAnotherPass {
@@ -105,6 +120,12 @@ final class WindowRegistry: ObservableObject {
             }
         }
         records = merged
+
+        let fullscreen = Set(merged.filter(\.isFullscreen).compactMap(\.screenUUID))
+        if fullscreen != fullscreenScreenUUIDs {
+            fullscreenScreenUUIDs = fullscreen
+        }
+
         rebuildItems()
     }
 
