@@ -149,6 +149,27 @@ Create a fine-grained PAT at
 - Repository access: only `mertizci/homebrew-tap`
 - Repository permissions → **Contents: Read and write**
 
+Fine-grained PATs expire. When this one does, the release job still builds,
+notarizes and uploads fine and then fails on the tap bump with a 403 — so the
+release is published but `brew upgrade` never sees it. Regenerate the token and
+re-run the failed job; nothing needs re-cutting.
+
+### Pushing workflow files
+
+A stored git credential (macOS keychain) that lacks the `workflow` OAuth scope
+is rejected when a push touches `.github/workflows/`, even though `gh` itself
+has the scope:
+
+```
+refusing to allow a Personal Access Token to create or update workflow ... without `workflow` scope
+```
+
+Fix it once with `gh auth setup-git`, or push that one time with:
+
+```bash
+git -c credential.helper= -c credential.helper='!gh auth git-credential' push
+```
+
 ## 7. Cutting a release
 
 ```bash
