@@ -40,10 +40,11 @@ struct TaskbarButtonHost: NSViewRepresentable {
                     WindowActions.toggle(record, isFrontmost: isFrontmost)
                 } else if records.isEmpty {
                     Self.reopen(pid: item.pid, onScreen: self.screenUUID)
-                } else if isFrontmost {
-                    WindowActions.hide(pid: item.pid)
                 } else {
-                    records.forEach(WindowActions.raise)
+                    // A grouped button stands for several windows, and guessing
+                    // which one you meant is worse than asking. Windows shows
+                    // thumbnails here; this shows their titles.
+                    self.popUp(Self.windowPicker(for: records))
                 }
             }
         }
@@ -78,11 +79,34 @@ struct TaskbarButtonHost: NSViewRepresentable {
         override func rightMouseDown(with event: NSEvent) {
             guard let item else { return }
             MainActor.assumeIsolated {
-                let menu = Self.makeMenu(for: item)
-                menu.popUp(positioning: nil,
-                           at: NSPoint(x: 0, y: bounds.height + 4),
-                           in: self)
+                self.popUp(Self.makeMenu(for: item))
             }
+        }
+
+        /// Opens a menu off the top edge of the button.
+        ///
+        /// With the bar at the bottom of the screen there is no room below, so
+        /// AppKit flips the menu upward on its own; anchoring to the top edge is
+        /// what makes it land against the button either way.
+        @MainActor
+        private func popUp(_ menu: NSMenu) {
+            menu.popUp(positioning: nil,
+                       at: NSPoint(x: 0, y: bounds.height + 4),
+                       in: self)
+        }
+
+        @MainActor
+        private static func windowPicker(for records: [WindowRecord]) -> NSMenu {
+            let menu = NSMenu()
+            for record in records {
+                let entry = menuItem(record.title, #selector(MenuTarget.raiseWindow(_:)), record.id)
+                entry.image = AppIconProvider.icon(
+                    pid: record.pid, bundleIdentifier: record.bundleIdentifier, size: 16
+                )
+                entry.state = record.isVisible ? .off : .mixed
+                menu.addItem(entry)
+            }
+            return menu
         }
 
         @MainActor
@@ -250,6 +274,21 @@ final class MenuTarget: NSObject {
     @objc func resetName(_ sender: NSMenuItem) {
         guard let itemID = sender.representedObject as? String else { return }
         CustomNames.shared.reset(itemID)
+    }
+
+    /// Clicking an entry in the overflow list behaves like clicking the
+    /// button it stands for.
+    @objc func activateItem(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String,
+              let item = WindowRegistry.shared.items.first(where: { $0.id == id }) else { return }
+        let records = WindowRegistry.shared.records(for: item)
+        if let record = records.first, records.count == 1 {
+            WindowActions.toggle(record, isFrontmost: WindowRegistry.shared.frontmostApplication == item.pid)
+        } else if records.isEmpty {
+            TaskbarButtonHost.ClickCatcher.reopen(pid: item.pid, onScreen: nil)
+        } else {
+            records.forEach(WindowActions.raise)
+        }
     }
 
     // MARK: - App

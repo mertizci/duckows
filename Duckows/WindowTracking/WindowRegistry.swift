@@ -159,21 +159,25 @@ final class WindowRegistry: ObservableObject {
                 )
             }
         case .byApp:
-            var order: [pid_t] = []
-            var grouped: [pid_t: [WindowRecord]] = [:]
+            // Keyed by bundle, not by process. Firefox runs a separate process
+            // per profile and Chrome does much the same, so grouping by pid
+            // showed one button per profile while claiming to group by app.
+            var order: [String] = []
+            var grouped: [String: [WindowRecord]] = [:]
             for record in records {
-                if grouped[record.pid] == nil { order.append(record.pid) }
-                grouped[record.pid, default: []].append(record)
+                let key = record.bundleIdentifier ?? "pid:\(record.pid)"
+                if grouped[key] == nil { order.append(key) }
+                grouped[key, default: []].append(record)
             }
-            next = order.compactMap { pid in
-                guard let group = grouped[pid], let first = group[0] as WindowRecord? else { return nil }
+            next = order.compactMap { key in
+                guard let group = grouped[key], let first = group.first else { return nil }
                 return TaskbarItem(
-                    id: TaskbarItem.appID(pid),
+                    id: "a:\(key)",
                     title: first.appName.isEmpty ? first.title : first.appName,
-                    pid: pid,
+                    pid: first.pid,
                     bundleIdentifier: first.bundleIdentifier,
                     windowIDs: group.map(\.id),
-                    isActive: pid == frontmostPID,
+                    isActive: group.contains { $0.pid == frontmostPID },
                     isMinimized: group.allSatisfy(\.isMinimized),
                     isHidden: group.allSatisfy { !$0.isVisible },
                     screenUUID: first.screenUUID
@@ -300,7 +304,13 @@ final class WindowRegistry: ObservableObject {
             // display — the one at the origin, with the menu bar — is what
             // "main display" means in System Settings, and it is the first.
             let primary = NSScreen.screens.first.flatMap { ScreenIdentity(screen: $0)?.uuid }
-            guard uuid == primary else { return [] }
+            guard uuid == primary else {
+                // The other displays keep showing their own windows; only the
+                // main one gets the full picture.
+                guard let uuid else { return [] }
+                let mine = windowItems.filter { $0.screenUUID == nil || $0.screenUUID == uuid }
+                return [mine].filter { !$0.isEmpty }
+            }
             return combinedGroups(windowItems, idle: idle)
 
         case .allOnEveryDisplay:

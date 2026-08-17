@@ -7,6 +7,8 @@ struct TaskbarButtonView: View {
     let item: TaskbarItem
     let taskbar: TaskbarSettings
     let screenUUID: String?
+    let width: CGFloat
+    let showsTitle: Bool
 
     @State private var isHovered = false
 
@@ -33,7 +35,7 @@ struct TaskbarButtonView: View {
                     .opacity(item.hasWindows ? 1 : 0.5)
             }
 
-            if taskbar.showsWindowTitles {
+            if showsTitle {
                 Text(item.title)
                     .font(.system(size: 12))
                     .lineLimit(1)
@@ -42,7 +44,7 @@ struct TaskbarButtonView: View {
             }
 
             // Grouped buttons say how many windows they stand for.
-            if taskbar.grouping == .byApp, item.windowIDs.count > 1 {
+            if showsTitle, taskbar.grouping == .byApp, item.windowIDs.count > 1 {
                 Text("\(item.windowIDs.count)")
                     .font(.system(size: 10, weight: .medium))
                     .padding(.horizontal, 4)
@@ -52,9 +54,8 @@ struct TaskbarButtonView: View {
                     }
             }
         }
-        .padding(.horizontal, 10)
-        .frame(height: taskbar.iconSize * 1.25)
-        .frame(maxWidth: taskbar.showsWindowTitles ? taskbar.maxButtonWidth : nil)
+        .padding(.horizontal, showsTitle ? 10 : 0)
+        .frame(width: width, height: taskbar.iconSize * 1.25)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(background)

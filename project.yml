@@ -70,6 +70,7 @@ targets:
       - DuckowsTests
       - Duckows/Update/SemanticVersion.swift
       - Duckows/Update/GitHubReleaseService.swift
+      - Duckows/Bar/StripLayout.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

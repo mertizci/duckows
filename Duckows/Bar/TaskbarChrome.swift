@@ -38,29 +38,10 @@ struct TaskbarChrome: View {
                 GrantAccessChip()
             }
 
-            // The strip scrolls rather than squeezing: a button whose title has
-            // been compressed to nothing is no more useful than no button.
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(sampleItems) { item in
-                        SampleButton(item: item, taskbar: taskbar)
-                    }
-                    ForEach(Array(itemGroups.enumerated()), id: \.offset) { index, group in
-                        if index > 0 {
-                            // Marks where one display's windows end and the
-                            // next display's begin.
-                            Divider()
-                                .frame(height: taskbar.iconSize * 0.8)
-                                .opacity(0.45)
-                                .padding(.horizontal, 2)
-                        }
-                        ForEach(group) { item in
-                            TaskbarButtonView(item: item, taskbar: taskbar, screenUUID: screenUUID)
-                        }
-                    }
-                }
+            GeometryReader { geo in
+                strip(available: geo.size.width)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 0)
 
@@ -71,6 +52,56 @@ struct TaskbarChrome: View {
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(BarBackground(appearance: appearance))
+    }
+}
+
+extension TaskbarChrome {
+    /// All the buttons, sized to whatever room is left.
+    @ViewBuilder
+    fileprivate func strip(available: CGFloat) -> some View {
+        let flat = itemGroups.flatMap { $0 }
+        let layout = StripLayout.compute(
+            available: available,
+            itemCount: flat.count,
+            dividerCount: max(0, itemGroups.count - 1),
+            iconSize: taskbar.iconSize,
+            maximumButtonWidth: taskbar.maxButtonWidth,
+            prefersTitles: taskbar.showsWindowTitles
+        )
+        let visible = Array(flat.prefix(layout.visibleCount))
+        let overflow = Array(flat.dropFirst(layout.visibleCount))
+
+        HStack(spacing: StripLayout.spacing) {
+            ForEach(sampleItems) { item in
+                SampleButton(item: item, taskbar: taskbar)
+            }
+
+            ForEach(Array(itemGroups.enumerated()), id: \.offset) { index, group in
+                let shown = group.filter { item in visible.contains(where: { $0.id == item.id }) }
+                if !shown.isEmpty {
+                    if index > 0 {
+                        // Marks where one display's windows end and the next
+                        // display's begin.
+                        Divider()
+                            .frame(height: taskbar.iconSize * 0.8)
+                            .opacity(0.45)
+                    }
+                    ForEach(shown) { item in
+                        TaskbarButtonView(
+                            item: item,
+                            taskbar: taskbar,
+                            screenUUID: screenUUID,
+                            width: layout.buttonWidth,
+                            showsTitle: layout.showsTitles
+                        )
+                    }
+                }
+            }
+
+            if !overflow.isEmpty {
+                OverflowButton(items: overflow, height: taskbar.iconSize * 1.25)
+            }
+        }
     }
 }
 
