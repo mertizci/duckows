@@ -171,8 +171,27 @@ enum WindowActions {
 
     @MainActor
     static func revealInFinder(pid: pid_t) {
-        guard let url = NSRunningApplication(processIdentifier: pid)?.bundleURL else { return }
+        guard let url = applicationURL(pid: pid) else { return }
         NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
+    /// The `.app` a running process belongs to.
+    ///
+    /// `NSRunningApplication.bundleURL` is not always one. Steam updates itself
+    /// into `~/Library/Application Support/Steam/Steam.AppBundle/Steam`, a
+    /// bundle with no `.app` extension, and handing that to LaunchServices
+    /// opens a Finder window on the folder instead of launching anything.
+    /// Asking LaunchServices to resolve the bundle identifier gives the app the
+    /// user actually installed.
+    @MainActor
+    static func applicationURL(pid: pid_t) -> URL? {
+        guard let app = NSRunningApplication(processIdentifier: pid) else { return nil }
+        if let identifier = app.bundleIdentifier,
+           let resolved = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) {
+            return resolved
+        }
+        guard let url = app.bundleURL, url.pathExtension == "app" else { return nil }
+        return url
     }
 
     static func hide(pid: pid_t) {

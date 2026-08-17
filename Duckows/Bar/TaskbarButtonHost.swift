@@ -58,7 +58,9 @@ struct TaskbarButtonHost: NSViewRepresentable {
         @MainActor
         static func reopen(pid: pid_t, onScreen uuid: String?) {
             guard let app = NSRunningApplication(processIdentifier: pid) else { return }
-            guard let url = app.bundleURL else {
+            // Not app.bundleURL: it is not always a .app, and LaunchServices
+            // answers a non-app bundle by opening a Finder window on it.
+            guard let url = WindowActions.applicationURL(pid: pid) else {
                 app.activate()
                 return
             }
