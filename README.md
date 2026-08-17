@@ -56,7 +56,8 @@ exactly once.
 - 🏷️ **Windows by name** — one button per open window with its title, or grouped per app.
 - 🚀 **Start menu** — every installed app, grouped by category, with fuzzy search, pinned and recent apps, settings shortcuts and power actions.
 - 🔔 **System tray** — clock and calendar, battery, volume and output switching, Wi-Fi, Bluetooth, brightness, CPU/RAM.
-- 🎨 **Themeable** — Liquid Glass on macOS 26, vibrancy on 14–15, or a solid fill; custom tint, opacity, height and corner radius.
+- 🎨 **Themeable** — Liquid Glass on macOS 26, vibrancy on 14–15, or a solid fill; custom tint, opacity, height and corner radius, with a live preview.
+- 🫥 **Auto-hide** — slides away until you reach for the screen edge.
 - 📐 **Reserves its space** — maximized windows stop at the bar instead of sliding under it.
 - 🖥️ **Multi-display** — an independent bar per screen, surviving hot-plug and resolution changes.
 - 🔄 **Self-updating** — checks GitHub on launch and installs signature-verified updates in place.
@@ -108,7 +109,10 @@ swift scripts/make-app-icon.swift
 
 ## Configuration
 
-Settings are stored as JSON at:
+Open settings from the Duckows menu bar item, or by running `open -a Duckows`
+while it is already running.
+
+Everything is stored as JSON at:
 
 ```
 ~/Library/Application Support/Duckows/config.json
