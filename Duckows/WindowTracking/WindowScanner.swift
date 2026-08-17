@@ -64,10 +64,11 @@ final class WindowScanner {
 
     struct ScanResult {
         let records: [WindowRecord]
-        /// Apps the window server still shows owning a real window, even
-        /// one that is off screen. This is the ground truth AX loses sight
-        /// of when a window is minimized.
-        let pidsOwningWindows: Set<pid_t>
+        /// Windows the window server still knows about, on screen or not.
+        ///
+        /// Ground truth for "does this window still exist", which is precisely
+        /// what AX stops answering once a window is minimized.
+        let liveWindowIDs: Set<CGWindowID>
     }
 
     func scan(context: ScanContext, completion: @escaping @MainActor (ScanResult) -> Void) {
@@ -123,29 +124,33 @@ final class WindowScanner {
         // this session rather than growing forever.
         everVisible.formIntersection(seen)
 
-        return ScanResult(records: records, pidsOwningWindows: Self.pidsOwningRealWindows())
+        return ScanResult(records: records, liveWindowIDs: Self.liveWindowIDs())
     }
 
-    /// Apps that own a window the window server considers real, on screen
-    /// or not.
+    /// Windows the window server considers real, on screen or not.
     ///
-    /// Every app also owns full-width strips 30 or so points tall — its
-    /// menu bar, one per display — so a size floor is what separates a
-    /// document window from the furniture.
-    private static func pidsOwningRealWindows() -> Set<pid_t> {
+    /// Deliberately keyed by window, not by app. Asking whether an *app* still
+    /// owns a window is too coarse: Warp keeps a 500x500 helper around after
+    /// its last real window is closed, so an app-level answer kept resurrecting
+    /// windows the user had just closed.
+    ///
+    /// Every app also owns full-width strips 30 or so points tall — its menu
+    /// bar, one per display — so a size floor separates a document window from
+    /// the furniture.
+    private static func liveWindowIDs() -> Set<CGWindowID> {
         let options: CGWindowListOption = [.optionAll, .excludeDesktopElements]
         guard let infos = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
             return []
         }
-        var pids: Set<pid_t> = []
+        var ids: Set<CGWindowID> = []
         for info in infos {
             guard (info[kCGWindowLayer as String] as? Int) == 0,
-                  let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+                  let id = info[kCGWindowNumber as String] as? CGWindowID,
                   let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
                   (bounds["Width"] ?? 0) >= 200, (bounds["Height"] ?? 0) >= 150 else { continue }
-            pids.insert(pid)
+            ids.insert(id)
         }
-        return pids
+        return ids
     }
 
     private func makeRecord(

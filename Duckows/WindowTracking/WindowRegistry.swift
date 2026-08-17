@@ -109,7 +109,7 @@ final class WindowRegistry: ObservableObject {
                 NSLog("Duckows: slow window sweep – %.0f ms for %d windows",
                       elapsed * 1000, records.count)
             }
-            self.apply(records, pidsOwningWindows: result.pidsOwningWindows)
+            self.apply(records, liveWindowIDs: result.liveWindowIDs)
             self.isScanning = false
             if self.needsAnotherPass {
                 self.needsAnotherPass = false
@@ -118,28 +118,29 @@ final class WindowRegistry: ObservableObject {
         }
     }
 
-    private func apply(_ fresh: [WindowRecord], pidsOwningWindows: Set<pid_t>) {
-        // AX loses sight of some apps' windows the moment they are minimized —
-        // WhatsApp and Notes both do this — and the app would then fall into
-        // the group with nothing open, taking a new slot at the far right and
+    private func apply(_ fresh: [WindowRecord], liveWindowIDs: Set<CGWindowID>) {
+        // AX stops reporting some apps' windows the moment they are minimized —
+        // WhatsApp and Notes both do — and the app would then fall into the
+        // group with nothing open, taking a new slot at the far right and
         // looking as though it had been closed.
         //
-        // The window server knows better: it still lists the window, just not
-        // on screen. So when an app reports no windows while the window server
-        // says it owns one, last sweep's records are carried forward, marked
-        // out of sight. Closing the window for real removes it there too, and
-        // only then does the app drop to the idle group.
+        // The window server still lists those windows, so a window we knew
+        // about that is missing from this sweep is carried forward, marked out
+        // of sight, for as long as the window server agrees it exists. Closing
+        // it for real removes it there too, and only then does it go.
+        //
+        // Matched by window, never by app: Warp keeps a 500x500 helper window
+        // around after its last real window closes, so asking whether the app
+        // still owns *a* window resurrected windows the user had just closed.
         var fresh = fresh
-        let pidsWithFreshRecords = Set(fresh.map(\.pid))
-        for (pid, previous) in Dictionary(grouping: records, by: \.pid)
-        where !pidsWithFreshRecords.contains(pid)
-            && pidsOwningWindows.contains(pid)
-            && NSRunningApplication(processIdentifier: pid)?.isTerminated == false {
-            fresh.append(contentsOf: previous.map { record in
-                var carried = record
-                carried.isVisible = false
-                return carried
-            })
+        let freshIDs = Set(fresh.map(\.id))
+        for record in records
+        where !freshIDs.contains(record.id)
+            && liveWindowIDs.contains(record.id)
+            && NSRunningApplication(processIdentifier: record.pid)?.isTerminated == false {
+            var carried = record
+            carried.isVisible = false
+            fresh.append(carried)
         }
 
         // A minimized window reports a stale position, so it would otherwise
