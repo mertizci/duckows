@@ -14,7 +14,8 @@ struct TaskbarView: View {
             appearance: settingsStore.settings.appearance,
             taskbar: settingsStore.settings.taskbar,
             items: registry.items(forScreen: screenUUID),
-            needsAccessibility: !permissions.isAccessibilityTrusted
+            needsAccessibility: !permissions.isAccessibilityTrusted,
+            screenUUID: screenUUID
         )
         .frame(height: settingsStore.settings.appearance.barThickness)
     }

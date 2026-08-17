@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The bar's visuals, with every input passed in rather than read from the
@@ -16,6 +17,7 @@ struct TaskbarChrome: View {
     /// Stand-ins used only by the settings preview.
     var sampleItems: [SampleItem] = []
     var showsClock = true
+    var screenUUID: String?
 
     struct SampleItem: Identifiable {
         let id = UUID()
@@ -26,7 +28,7 @@ struct TaskbarChrome: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            StartButton(iconSize: taskbar.iconSize)
+            StartButton(iconSize: taskbar.iconSize, screenUUID: screenUUID)
 
             if appearance.showsSeparator {
                 Divider().frame(height: taskbar.iconSize * 0.8).opacity(0.4)
@@ -64,11 +66,13 @@ struct TaskbarChrome: View {
 
 private struct StartButton: View {
     let iconSize: Double
+    let screenUUID: String?
     @State private var isHovered = false
 
     var body: some View {
         Button {
-            // The Start menu arrives in a later phase.
+            let screen = NSScreen.screens.first { ScreenIdentity(screen: $0)?.uuid == screenUUID }
+            StartMenuPanelController.shared.toggle(anchorScreen: screen ?? NSScreen.main)
         } label: {
             Image(systemName: "square.grid.2x2.fill")
                 .font(.system(size: iconSize * 0.62, weight: .medium))
