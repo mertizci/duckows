@@ -10,6 +10,7 @@ final class PermissionsOnboardingWindowController: NSObject, NSWindowDelegate {
     static let shared = PermissionsOnboardingWindowController()
 
     private var window: NSWindow?
+    private var hasPrompted = false
 
     private override init() {
         super.init()
@@ -40,6 +41,16 @@ final class PermissionsOnboardingWindowController: NSObject, NSWindowDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         PermissionMonitor.shared.startPolling()
+
+        // Ask macOS straight away rather than waiting for the button. Until an
+        // app requests the permission it does not appear in the Accessibility
+        // list at all, so the only alternative is telling the user to hunt for
+        // the bundle with the "+" button — which for a build inside
+        // DerivedData is genuinely unreasonable.
+        if !hasPrompted, !PermissionMonitor.shared.isAccessibilityTrusted {
+            hasPrompted = true
+            PermissionMonitor.shared.requestAccessibility()
+        }
     }
 
     func close() {

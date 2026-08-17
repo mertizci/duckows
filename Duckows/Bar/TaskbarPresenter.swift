@@ -25,8 +25,15 @@ final class TaskbarPresenter: ObservableObject {
         // one, so this runs the full reconcile rather than only re-pinning
         // frames — otherwise turning off "show on all displays" would do
         // nothing until the next display event.
+        //
+        // `.receive(on:)` is load-bearing, not tidiness. @Published emits from
+        // `willSet`, so a synchronous subscriber runs *before* the property is
+        // actually updated: the reconcile would read the previous settings and
+        // apply them, leaving every change one step behind. Switching the bar
+        // to the top did nothing until you switched it back.
         SettingsStore.shared.$settings
             .removeDuplicates()
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.synchronize(with: ScreenRegistry.shared.screens)
             }
